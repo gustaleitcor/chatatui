@@ -2,7 +2,8 @@ use crate::ui::ui;
 use std::{
     io::{stdout, Result},
     sync::{Arc, Mutex},
-    thread::{self},
+    thread::{self, sleep},
+    time::Duration,
 };
 
 use ratatui::{
@@ -19,6 +20,7 @@ pub enum CurrentScreen {
     Register,
     Login,
     Chat,
+    Exit,
 }
 
 pub struct App {
@@ -64,13 +66,24 @@ impl App {
             }
         });
         loop {
+            let now = std::time::Instant::now();
+
             terminal.draw(|f| {
-                match ui(f, self) {
-                    Ok(_) => {}
-                    Err(_) => {}
-                };
+                ui(f, self);
             })?;
+
+            if let CurrentScreen::Exit = self.current_screen {
+                break;
+            }
+
+            sleep(
+                Duration::from_millis(16)
+                    .checked_sub(now.elapsed())
+                    .unwrap_or(Duration::from_millis(0)),
+            );
         }
+
+        Ok(())
     }
 
     fn read_event(current_event: Arc<Mutex<Option<Event>>>) {

@@ -1,5 +1,3 @@
-use std::io::Result;
-
 use ratatui::{
     crossterm::event::{Event, KeyCode},
     layout::Alignment,
@@ -9,16 +7,21 @@ use ratatui::{
 
 use crate::app::{App, CurrentScreen::*};
 
-pub fn ui(f: &mut Frame, app: &mut App) -> Result<()> {
+pub fn ui(f: &mut Frame, app: &mut App) {
     let current_event = app.get_current_event();
 
     match *app.current_screen() {
         Register => {
             // handles event
             if let Some(Event::Key(key)) = current_event {
-                if key.code == KeyCode::Esc {
+                if key.code == KeyCode::Tab {
                     app.set_current_screen(Login);
-                    return Ok(());
+                    return;
+                }
+
+                if key.code == KeyCode::Esc {
+                    app.set_current_screen(Exit);
+                    return;
                 }
             }
 
@@ -32,9 +35,14 @@ pub fn ui(f: &mut Frame, app: &mut App) -> Result<()> {
         }
         Login => {
             if let Some(Event::Key(key)) = current_event {
-                if key.code == KeyCode::Esc {
+                if key.code == KeyCode::Tab {
                     app.set_current_screen(Register);
-                    return Ok(());
+                    return;
+                }
+
+                if key.code == KeyCode::Esc {
+                    app.set_current_screen(Exit);
+                    return;
                 }
             }
 
@@ -53,7 +61,8 @@ pub fn ui(f: &mut Frame, app: &mut App) -> Result<()> {
                 f.size(),
             );
         }
+        Exit => {
+            return;
+        }
     }
-
-    Ok(())
 }
