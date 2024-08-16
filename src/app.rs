@@ -23,9 +23,15 @@ pub enum CurrentScreen {
     Exit,
 }
 
+pub enum CursorMode {
+    Normal,
+    Insert,
+}
+
 pub struct App {
     current_event: Arc<Mutex<Option<Event>>>,
     current_screen: CurrentScreen,
+    cursor_mode: CursorMode,
     login: String,
     password: String,
     pub messages: Vec<String>,
@@ -41,6 +47,7 @@ impl App {
             password: String::new(),
             messages: Vec::new(),
             message: String::new(),
+            cursor_mode: CursorMode::Normal,
         }
     }
 
@@ -79,7 +86,7 @@ impl App {
             sleep(
                 Duration::from_millis(16)
                     .checked_sub(now.elapsed())
-                    .unwrap_or(Duration::from_millis(0)),
+                    .unwrap_or(Duration::ZERO),
             );
         }
 
@@ -99,7 +106,22 @@ impl App {
         self.current_screen = screen;
     }
 
-    pub fn get_current_event(&self) -> Option<Event> {
+    pub fn take_current_event(&self) -> Option<Event> {
         self.current_event.lock().unwrap().take()
+    }
+
+    pub fn set_cursor_mode(&mut self, mode: CursorMode) {
+        self.cursor_mode = mode;
+    }
+
+    pub fn cursor_mode(&self) -> &CursorMode {
+        &self.cursor_mode
+    }
+
+    pub fn toggle_cursor_mode(&mut self) {
+        self.cursor_mode = match self.cursor_mode {
+            CursorMode::Normal => CursorMode::Insert,
+            CursorMode::Insert => CursorMode::Normal,
+        };
     }
 }
