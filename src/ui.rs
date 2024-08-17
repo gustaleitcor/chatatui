@@ -10,12 +10,19 @@ use ratatui::{
 use crate::app::{App, CurrentScreen::*, CursorMode, FocusOn};
 
 pub fn ui(f: &mut Frame, app: &mut App) {
-    let current_event = app.take_current_event();
+    let mut current_event = app.take_current_event();
 
     if let Some(Event::Key(key)) = current_event {
         match key.code {
-            KeyCode::Esc => app.set_cursor_mode(CursorMode::Normal),
-            KeyCode::Char('a') => app.set_cursor_mode(CursorMode::Insert),
+            KeyCode::Esc => {
+                app.set_cursor_mode(CursorMode::Normal);
+            }
+            KeyCode::Char('a') => {
+                if let CursorMode::Normal = app.cursor_mode() {
+                    current_event = None;
+                }
+                app.set_cursor_mode(CursorMode::Insert);
+            }
 
             _ => {}
         }
@@ -35,7 +42,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                         KeyCode::Enter => {
                             app.set_username("".to_string());
                             app.set_password("".to_string());
-                            // app.set_current_screen(Chat);
+                            app.set_current_screen(Login);
                         }
 
                         KeyCode::Char(c) => match app.focus_on() {
@@ -43,6 +50,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                             Some(FocusOn::Password) => app.push_password(c),
                             _ => app.set_focus_on(Some(FocusOn::Username)),
                         },
+
                         KeyCode::Backspace => match app.focus_on() {
                             Some(FocusOn::Username) => app.pop_username(),
                             Some(FocusOn::Password) => app.pop_password(),
@@ -150,16 +158,28 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 chunks[5],
             );
 
-            f.render_widget(
-                Paragraph::new("Press '2' to switch to Register | Press 'Enter' to submit")
-                    .alignment(Alignment::Center)
-                    .block(
-                        Block::default()
-                            .borders(Borders::TOP)
-                            .title(app.cursor_mode().as_str()),
-                    ),
-                chunks[6],
-            );
+            match app.cursor_mode() {
+                CursorMode::Normal => f.render_widget(
+                    Paragraph::new("Press '2' to switch to Login | Press 'q' to exit")
+                        .alignment(Alignment::Center)
+                        .block(
+                            Block::default()
+                                .borders(Borders::TOP)
+                                .title(app.cursor_mode().as_str()),
+                        ),
+                    chunks[6],
+                ),
+                CursorMode::Insert => f.render_widget(
+                    Paragraph::new("Press 'Enter' to submit")
+                        .alignment(Alignment::Center)
+                        .block(
+                            Block::default()
+                                .borders(Borders::TOP)
+                                .title(app.cursor_mode().as_str()),
+                        ),
+                    chunks[6],
+                ),
+            }
         }
         Login => {
             if let Some(Event::Key(key)) = current_event {
@@ -173,7 +193,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                         KeyCode::Enter => {
                             app.set_username("".to_string());
                             app.set_password("".to_string());
-                            // app.set_current_screen(Chat);
+                            app.set_current_screen(Chat);
                         }
 
                         KeyCode::Char(c) => match app.focus_on() {
@@ -290,16 +310,28 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 chunks[5],
             );
 
-            f.render_widget(
-                Paragraph::new("Press '2' to switch to Register | Press 'Enter' to submit")
-                    .alignment(Alignment::Center)
-                    .block(
-                        Block::default()
-                            .borders(Borders::TOP)
-                            .title(app.cursor_mode().as_str()),
-                    ),
-                chunks[6],
-            );
+            match app.cursor_mode() {
+                CursorMode::Normal => f.render_widget(
+                    Paragraph::new("Press '2' to switch to Register | Press 'q' to exit")
+                        .alignment(Alignment::Center)
+                        .block(
+                            Block::default()
+                                .borders(Borders::TOP)
+                                .title(app.cursor_mode().as_str()),
+                        ),
+                    chunks[6],
+                ),
+                CursorMode::Insert => f.render_widget(
+                    Paragraph::new("Press 'Enter' to submit")
+                        .alignment(Alignment::Center)
+                        .block(
+                            Block::default()
+                                .borders(Borders::TOP)
+                                .title(app.cursor_mode().as_str()),
+                        ),
+                    chunks[6],
+                ),
+            }
         }
         Chat => {
             f.render_widget(
