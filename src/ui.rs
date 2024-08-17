@@ -1,7 +1,7 @@
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
-    layout::{Alignment, Constraint, Direction, Flex, Layout},
-    style::{Color, Style},
+    layout::{Alignment, Constraint, Direction, Flex, Layout, Rect},
+    style::{Color, Style, Stylize},
     text::Text,
     widgets::{Block, Borders, Paragraph},
     Frame,
@@ -68,35 +68,31 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 }
             }
 
-            let chunks = Layout::default()
+            let chunks: [Rect; 6] = Layout::default()
                 .direction(Direction::Vertical)
                 .flex(Flex::Center)
                 .constraints(
                     [
+                        Constraint::Length(2),
                         Constraint::Length(3),
                         Constraint::Length(1),
                         Constraint::Length(3),
                         Constraint::Length(1),
-                        Constraint::Length(3),
-                        Constraint::Max(2),
                         Constraint::Length(2),
                     ]
                     .as_ref(),
                 )
-                .split(f.size());
-
-            f.render_widget(
-                Paragraph::new(Text::raw("Register").centered())
-                    .alignment(Alignment::Center)
-                    .block(Block::new().borders(Borders::ALL)),
-                chunks[0],
-            );
+                .areas(f.size());
 
             f.render_widget(
                 Paragraph::new(Text::raw("Username:").centered())
                     .alignment(Alignment::Center)
-                    .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
-                chunks[1],
+                    .block(
+                        Block::new()
+                            .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
+                            .title("Register"),
+                    ),
+                chunks[0],
             );
 
             f.render_widget(
@@ -117,14 +113,14 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                                 },
                             )),
                     ),
-                chunks[2],
+                chunks[1],
             );
 
             f.render_widget(
                 Paragraph::new(Text::raw("Password:").alignment(Alignment::Center))
                     .alignment(Alignment::Center)
                     .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
-                chunks[3],
+                chunks[2],
             );
 
             f.render_widget(
@@ -145,7 +141,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                                 },
                             )),
                     ),
-                chunks[4],
+                chunks[3],
             );
 
             f.render_widget(
@@ -155,19 +151,19 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 )
                 .alignment(Alignment::Center)
                 .block(Block::default().borders(Borders::LEFT | Borders::RIGHT)),
-                chunks[5],
+                chunks[4],
             );
 
             match app.cursor_mode() {
                 CursorMode::Normal => f.render_widget(
-                    Paragraph::new("Press '2' to switch to Login | Press 'q' to exit")
+                    Paragraph::new("Press '1' to switch to Login | Press 'q' to exit")
                         .alignment(Alignment::Center)
                         .block(
                             Block::default()
                                 .borders(Borders::TOP)
                                 .title(app.cursor_mode().as_str()),
                         ),
-                    chunks[6],
+                    chunks[5],
                 ),
                 CursorMode::Insert => f.render_widget(
                     Paragraph::new("Press 'Enter' to submit")
@@ -177,7 +173,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                                 .borders(Borders::TOP)
                                 .title(app.cursor_mode().as_str()),
                         ),
-                    chunks[6],
+                    chunks[5],
                 ),
             }
         }
@@ -218,35 +214,31 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 }
             }
 
-            let chunks = Layout::default()
+            let chunks: [Rect; 6] = Layout::default()
                 .direction(Direction::Vertical)
                 .flex(Flex::Center)
                 .constraints(
                     [
+                        Constraint::Length(2),
                         Constraint::Length(3),
                         Constraint::Length(1),
                         Constraint::Length(3),
                         Constraint::Length(1),
-                        Constraint::Length(3),
-                        Constraint::Max(2),
                         Constraint::Length(2),
                     ]
                     .as_ref(),
                 )
-                .split(f.size());
-
-            f.render_widget(
-                Paragraph::new(Text::raw("Login").centered())
-                    .alignment(Alignment::Center)
-                    .block(Block::new().borders(Borders::ALL)),
-                chunks[0],
-            );
+                .areas(f.size());
 
             f.render_widget(
                 Paragraph::new(Text::raw("Username:").centered())
                     .alignment(Alignment::Center)
-                    .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
-                chunks[1],
+                    .block(
+                        Block::new()
+                            .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
+                            .title("Login"),
+                    ),
+                chunks[0],
             );
 
             f.render_widget(
@@ -267,35 +259,37 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                                 },
                             )),
                     ),
-                chunks[2],
+                chunks[1],
             );
 
             f.render_widget(
                 Paragraph::new(Text::raw("Password:").alignment(Alignment::Center))
                     .alignment(Alignment::Center)
                     .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
-                chunks[3],
+                chunks[2],
             );
 
             f.render_widget(
-                Paragraph::new(Text::raw(app.password()).centered())
-                    .alignment(Alignment::Center)
-                    .block(
-                        Block::new()
-                            .borders(if let Some(FocusOn::Password) = app.focus_on() {
-                                Borders::ALL
+                Paragraph::new(
+                    Text::raw(app.password().chars().map(|_| '*').collect::<String>()).centered(),
+                )
+                .alignment(Alignment::Center)
+                .block(
+                    Block::new()
+                        .borders(if let Some(FocusOn::Password) = app.focus_on() {
+                            Borders::ALL
+                        } else {
+                            Borders::LEFT | Borders::RIGHT
+                        })
+                        .border_style(Style::default().fg(
+                            if let Some(FocusOn::Password) = app.focus_on() {
+                                Color::Yellow
                             } else {
-                                Borders::LEFT | Borders::RIGHT
-                            })
-                            .border_style(Style::default().fg(
-                                if let Some(FocusOn::Password) = app.focus_on() {
-                                    Color::Yellow
-                                } else {
-                                    Color::Reset
-                                },
-                            )),
-                    ),
-                chunks[4],
+                                Color::Reset
+                            },
+                        )),
+                ),
+                chunks[3],
             );
 
             // render message of error if any on chunk 5 put a dummy message for now
@@ -307,7 +301,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 )
                 .alignment(Alignment::Center)
                 .block(Block::default().borders(Borders::LEFT | Borders::RIGHT)),
-                chunks[5],
+                chunks[4],
             );
 
             match app.cursor_mode() {
@@ -319,7 +313,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                                 .borders(Borders::TOP)
                                 .title(app.cursor_mode().as_str()),
                         ),
-                    chunks[6],
+                    chunks[5],
                 ),
                 CursorMode::Insert => f.render_widget(
                     Paragraph::new("Press 'Enter' to submit")
@@ -329,7 +323,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                                 .borders(Borders::TOP)
                                 .title(app.cursor_mode().as_str()),
                         ),
-                    chunks[6],
+                    chunks[5],
                 ),
             }
         }
