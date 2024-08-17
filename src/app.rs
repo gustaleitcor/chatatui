@@ -32,7 +32,7 @@ pub struct App {
     current_event: Arc<Mutex<Option<Event>>>,
     current_screen: CurrentScreen,
     cursor_mode: CursorMode,
-    login: String,
+    username: String,
     password: String,
     pub messages: Vec<String>,
     pub message: String,
@@ -43,7 +43,7 @@ impl App {
         App {
             current_event: Arc::new(Mutex::new(None)),
             current_screen: CurrentScreen::Login,
-            login: String::new(),
+            username: String::new(),
             password: String::new(),
             messages: Vec::new(),
             message: String::new(),
@@ -114,8 +114,24 @@ impl App {
         self.cursor_mode = mode;
     }
 
+    pub fn set_username(&mut self, username: String) {
+        self.username = username;
+    }
+
+    pub fn set_password(&mut self, password: String) {
+        self.password = password;
+    }
+
     pub fn cursor_mode(&self) -> &CursorMode {
         &self.cursor_mode
+    }
+
+    pub fn password(&self) -> &str {
+        &self.password
+    }
+
+    pub fn username(&self) -> &str {
+        &self.username
     }
 
     pub fn toggle_cursor_mode(&mut self) {
