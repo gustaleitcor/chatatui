@@ -1,11 +1,12 @@
 use ratatui::{
-    crossterm::event::{Event, KeyCode},
+    crossterm::event::{Event, KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Flex, Layout},
+    style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
-use crate::app::{App, CurrentScreen::*, CursorMode};
+use crate::app::{App, CurrentScreen::*, CursorMode, FocusOn};
 
 pub fn ui(f: &mut Frame, app: &mut App) {
     let current_event = app.take_current_event();
@@ -18,11 +19,12 @@ pub fn ui(f: &mut Frame, app: &mut App) {
         }
     }
 
+    // renders the current screen
     match *app.current_screen() {
         Register => {
             // handles event
             if let Some(Event::Key(key)) = current_event {
-                if key.code == KeyCode::Tab {
+                if key.code == KeyCode::Char('1') {
                     app.set_current_screen(Login);
                 }
 
@@ -60,30 +62,37 @@ pub fn ui(f: &mut Frame, app: &mut App) {
         Login => {
             if let Some(Event::Key(key)) = current_event {
                 match key.code {
-                    KeyCode::Tab => {
+                    KeyCode::Char('2') => {
                         app.set_username("".to_string());
                         app.set_password("".to_string());
                         app.set_current_screen(Register);
-                    }
-
-                    KeyCode::Esc => {
-                        app.toggle_cursor_mode();
+                        return;
                     }
 
                     _ => match &app.cursor_mode() {
                         CursorMode::Normal => {}
                         CursorMode::Insert => match key.code {
-                            KeyCode::Char(c) => {
-                                app.set_username(format!("{}{}", app.username(), c));
-                            }
-                            KeyCode::Backspace => {
-                                app.set_username(
-                                    app.username()
-                                        .chars()
-                                        .take(app.username().len() - 1)
-                                        .collect(),
-                                );
-                            }
+                            KeyCode::Char(c) => match app.focus_on() {
+                                Some(FocusOn::Username) => app.push_username(c),
+                                Some(FocusOn::Password) => app.push_password(c),
+                                _ => app.set_focus_on(Some(FocusOn::Username)),
+                            },
+                            KeyCode::Backspace => match app.focus_on() {
+                                Some(FocusOn::Username) => app.pop_username(),
+                                Some(FocusOn::Password) => app.pop_password(),
+                                _ => app.set_focus_on(Some(FocusOn::Username)),
+                            },
+
+                            KeyCode::Tab => match app.focus_on() {
+                                Some(FocusOn::Username) => {
+                                    app.set_focus_on(Some(FocusOn::Password))
+                                }
+                                Some(FocusOn::Password) => {
+                                    app.set_focus_on(Some(FocusOn::Username))
+                                }
+                                _ => app.set_focus_on(Some(FocusOn::Username)),
+                            },
+
                             _ => {}
                         },
                     },
@@ -95,6 +104,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 .flex(Flex::Center)
                 .constraints(
                     [
+                        Constraint::Length(1),
                         Constraint::Fill(1),
                         Constraint::Fill(1),
                         Constraint::Fill(1),
@@ -105,45 +115,70 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 )
                 .split(f.size());
 
-            let login_chunk = Layout::default()
+            let title_chunk = Layout::default()
                 .direction(Direction::Horizontal)
                 .flex(Flex::Center)
                 .constraints([Constraint::Max(f.size().width / 2)])
                 .split(chunks[0]);
 
-            let login_input_chunk = Layout::default()
+            let login_chunk = Layout::default()
                 .direction(Direction::Horizontal)
                 .flex(Flex::Center)
                 .constraints([Constraint::Max(f.size().width / 2)])
                 .split(chunks[1]);
 
-            let password_chunk = Layout::default()
+            let login_input_chunk = Layout::default()
                 .direction(Direction::Horizontal)
                 .flex(Flex::Center)
                 .constraints([Constraint::Max(f.size().width / 2)])
                 .split(chunks[2]);
 
-            let password_input_chunk = Layout::default()
+            let password_chunk = Layout::default()
                 .direction(Direction::Horizontal)
                 .flex(Flex::Center)
                 .constraints([Constraint::Max(f.size().width / 2)])
                 .split(chunks[3]);
 
+            let password_input_chunk = Layout::default()
+                .direction(Direction::Horizontal)
+                .flex(Flex::Center)
+                .constraints([Constraint::Max(f.size().width / 2)])
+                .split(chunks[4]);
+
+            f.render_widget(
+                Paragraph::new("Login").alignment(Alignment::Center).block(
+                    Block::new()
+                        .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
+                        .title(app.cursor_mode().as_str()),
+                ),
+                title_chunk[0],
+            );
+
             f.render_widget(
                 Paragraph::new("Username")
                     .alignment(Alignment::Center)
-                    .block(
-                        Block::new()
-                            .borders(Borders::LEFT | Borders::RIGHT | Borders::TOP)
-                            .title("Login"),
-                    ),
+                    .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
                 login_chunk[0],
             );
 
             f.render_widget(
                 Paragraph::new(app.username())
                     .alignment(Alignment::Center)
-                    .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
+                    .block(
+                        Block::new()
+                            .borders(if let Some(FocusOn::Username) = app.focus_on() {
+                                Borders::ALL
+                            } else {
+                                Borders::LEFT | Borders::RIGHT
+                            })
+                            .border_style(Style::default().fg(
+                                if let Some(FocusOn::Username) = app.focus_on() {
+                                    Color::Yellow
+                                } else {
+                                    Color::Reset
+                                },
+                            )),
+                    ),
                 login_input_chunk[0],
             );
 
@@ -155,17 +190,32 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             );
 
             f.render_widget(
-                Paragraph::new(app.username())
+                Paragraph::new(app.password())
                     .alignment(Alignment::Center)
-                    .block(Block::new().borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)),
+                    .block(
+                        Block::new()
+                            .borders(if let Some(FocusOn::Password) = app.focus_on() {
+                                Borders::ALL
+                            } else {
+                                Borders::LEFT | Borders::RIGHT | Borders::BOTTOM
+                            })
+                            .border_style(Style::default().fg(
+                                if let Some(FocusOn::Password) = app.focus_on() {
+                                    Color::Yellow
+                                } else {
+                                    Color::Reset
+                                },
+                            )),
+                    ),
                 password_input_chunk[0],
             );
 
             // render footer with the key options labeled
 
             f.render_widget(
-                Paragraph::new("Press 'Tab' to switch to Register").alignment(Alignment::Center),
-                chunks[4],
+                Paragraph::new("Press 'Tab' to switch to Register | Press 'Enter' to submit")
+                    .alignment(Alignment::Center),
+                chunks[5],
             );
         }
         Chat => {

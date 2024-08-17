@@ -13,6 +13,7 @@ use ratatui::{
         ExecutableCommand,
     },
     prelude::Backend,
+    style::Style,
     Terminal,
 };
 
@@ -28,14 +29,20 @@ pub enum CursorMode {
     Insert,
 }
 
+pub enum FocusOn {
+    Username,
+    Password,
+}
+
 pub struct App {
     current_event: Arc<Mutex<Option<Event>>>,
     current_screen: CurrentScreen,
+    focus_on: Option<FocusOn>,
     cursor_mode: CursorMode,
     username: String,
     password: String,
-    pub messages: Vec<String>,
-    pub message: String,
+    messages: Vec<String>,
+    message: String,
 }
 
 impl App {
@@ -48,6 +55,7 @@ impl App {
             messages: Vec::new(),
             message: String::new(),
             cursor_mode: CursorMode::Normal,
+            focus_on: None,
         }
     }
 
@@ -118,6 +126,30 @@ impl App {
         self.username = username;
     }
 
+    pub fn pop_username(&mut self) {
+        self.username.pop();
+    }
+
+    pub fn push_username(&mut self, c: char) {
+        self.username.push(c);
+    }
+
+    pub fn pop_password(&mut self) {
+        self.password.pop();
+    }
+
+    pub fn push_password(&mut self, c: char) {
+        self.password.push(c);
+    }
+
+    pub fn focus_on(&self) -> Option<&FocusOn> {
+        self.focus_on.as_ref()
+    }
+
+    pub fn set_focus_on(&mut self, focus_on: Option<FocusOn>) {
+        self.focus_on = focus_on;
+    }
+
     pub fn set_password(&mut self, password: String) {
         self.password = password;
     }
@@ -139,5 +171,14 @@ impl App {
             CursorMode::Normal => CursorMode::Insert,
             CursorMode::Insert => CursorMode::Normal,
         };
+    }
+}
+
+impl CursorMode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            CursorMode::Normal => "Normal",
+            CursorMode::Insert => "Insert",
+        }
     }
 }
