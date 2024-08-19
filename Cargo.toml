@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 ratatui = "0.27.0"
+crud_bd = { path = "../crudbd" }
+diesel = "2.2.2"

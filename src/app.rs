@@ -6,6 +6,9 @@ use std::{
     time::Duration,
 };
 
+use diesel::pg::PgConnection;
+
+use crud_bd::crud::{establish_connection, user::User};
 use ratatui::{
     crossterm::{
         event::{self, DisableMouseCapture, EnableMouseCapture, Event},
@@ -13,7 +16,6 @@ use ratatui::{
         ExecutableCommand,
     },
     prelude::Backend,
-    style::Style,
     Terminal,
 };
 
@@ -32,6 +34,7 @@ pub enum CursorMode {
 pub enum FocusOn {
     Username,
     Password,
+    Input,
 }
 
 pub struct App {
@@ -39,10 +42,11 @@ pub struct App {
     current_screen: CurrentScreen,
     focus_on: Option<FocusOn>,
     cursor_mode: CursorMode,
-    username: String,
-    password: String,
     messages: Vec<String>,
     message: String,
+    error: String,
+    user: User,
+    pgConn: PgConnection,
 }
 
 impl App {
@@ -50,12 +54,17 @@ impl App {
         App {
             current_event: Arc::new(Mutex::new(None)),
             current_screen: CurrentScreen::Login,
-            username: String::new(),
-            password: String::new(),
+            user: User {
+                id: 0,
+                username: String::new(),
+                password: String::new(),
+            },
             messages: Vec::new(),
             message: String::new(),
             cursor_mode: CursorMode::Normal,
             focus_on: None,
+            error: String::new(),
+            pgConn: establish_connection(),
         }
     }
 
@@ -123,23 +132,23 @@ impl App {
     }
 
     pub fn set_username(&mut self, username: String) {
-        self.username = username;
+        self.user.username = username;
     }
 
     pub fn pop_username(&mut self) {
-        self.username.pop();
+        self.user.username.pop();
     }
 
     pub fn push_username(&mut self, c: char) {
-        self.username.push(c);
+        self.user.username.push(c);
     }
 
     pub fn pop_password(&mut self) {
-        self.password.pop();
+        self.user.password.pop();
     }
 
     pub fn push_password(&mut self, c: char) {
-        self.password.push(c);
+        self.user.password.push(c);
     }
 
     pub fn focus_on(&self) -> Option<&FocusOn> {
@@ -151,7 +160,7 @@ impl App {
     }
 
     pub fn set_password(&mut self, password: String) {
-        self.password = password;
+        self.user.password = password;
     }
 
     pub fn cursor_mode(&self) -> &CursorMode {
@@ -159,11 +168,11 @@ impl App {
     }
 
     pub fn password(&self) -> &str {
-        &self.password
+        &self.user.password
     }
 
     pub fn username(&self) -> &str {
-        &self.username
+        &self.user.username
     }
 
     pub fn toggle_cursor_mode(&mut self) {
@@ -171,6 +180,58 @@ impl App {
             CursorMode::Normal => CursorMode::Insert,
             CursorMode::Insert => CursorMode::Normal,
         };
+    }
+
+    pub fn set_message(&mut self, message: String) {
+        self.message = message;
+    }
+
+    pub fn push_message(&mut self, message: String) {
+        self.messages.push(message);
+    }
+
+    pub fn messages(&self) -> &Vec<String> {
+        &self.messages
+    }
+
+    pub fn message(&self) -> &String {
+        &self.message
+    }
+
+    pub fn pop_message(&mut self) {
+        self.message.pop();
+    }
+
+    pub fn push_message_char(&mut self, c: char) {
+        self.message.push(c);
+    }
+
+    pub fn set_error(&mut self, error: String) {
+        self.error = error;
+    }
+
+    pub fn error(&self) -> &String {
+        &self.error
+    }
+
+    pub fn pgConn(&mut self) -> &mut PgConnection {
+        &mut self.pgConn
+    }
+
+    pub fn set_pgConn(&mut self, pgConn: PgConnection) {
+        self.pgConn = pgConn;
+    }
+
+    pub fn user(&self) -> &User {
+        &self.user
+    }
+
+    pub fn set_user(&mut self, user: User) {
+        self.user = user;
+    }
+
+    pub fn clear_messages(&mut self) {
+        self.messages.clear();
     }
 }
 
