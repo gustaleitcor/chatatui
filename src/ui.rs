@@ -1,10 +1,10 @@
-use crud_bd::crud::user::{self, username_exists};
+use crud_bd::crud::user::{self};
 use ratatui::{
-    crossterm::event::{Event, KeyCode, KeyEvent},
+    crossterm::event::{Event, KeyCode},
     layout::{Alignment, Constraint, Direction, Flex, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     text::Text,
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Borders, List, ListState, Paragraph},
     Frame,
 };
 
@@ -49,10 +49,8 @@ pub fn ui(f: &mut Frame, app: &mut App) {
 
                             if username.is_empty() || password.is_empty() {
                                 app.set_error("Username or password cannot be empty".to_string());
-                            } else if username_exists(app.pgConn(), &username) {
-                                app.set_error("Username already exists".to_string());
                             } else {
-                                user::create_user(app.pgConn(), &username, &password);
+                                user::create_user(app.pg_conn(), &username, &password);
                                 app.set_error("".to_string());
                                 app.set_current_screen(Login);
                             }
@@ -201,7 +199,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                     CursorMode::Insert => match key.code {
                         KeyCode::Enter => {
                             let username = app.username().to_string().clone();
-                            let response = user::get_user_by_username(app.pgConn(), &username);
+                            let response = user::get_user_by_username(app.pg_conn(), &username);
                             match response {
                                 Ok(user) => {
                                     if user.password == app.password()
@@ -354,7 +352,31 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                 match &app.cursor_mode() {
                     CursorMode::Normal => match key.code {
                         KeyCode::Char('q') => app.set_current_screen(Exit),
-                        KeyCode::Tab => app.set_current_screen(Chat),
+                        KeyCode::Tab => app.set_focus_on(Some(FocusOn::Input)),
+
+                        KeyCode::Up => match app.focus_on() {
+                            Some(FocusOn::Input) => {
+                                app.set_focus_on(Some(FocusOn::Message(app.messages().len() - 1)))
+                            }
+                            Some(FocusOn::Message(n)) => {
+                                if *n > 0 {
+                                    app.set_focus_on(Some(FocusOn::Message(n - 1)))
+                                }
+                            }
+                            _ => {}
+                        },
+
+                        KeyCode::Down => {
+                            if let Some(FocusOn::Message(n)) = app.focus_on() {
+                                if *n < app.messages().len() - 1 {
+                                    app.set_focus_on(Some(FocusOn::Message(n + 1)))
+                                } else {
+                                    app.set_focus_on(Some(FocusOn::Input));
+                                    app.set_cursor_mode(CursorMode::Insert);
+                                }
+                            }
+                        }
+
                         _ => {}
                     },
                     CursorMode::Insert => match key.code {
@@ -373,10 +395,12 @@ pub fn ui(f: &mut Frame, app: &mut App) {
                             _ => app.set_focus_on(Some(FocusOn::Input)),
                         },
 
-                        KeyCode::Tab => match app.focus_on() {
-                            Some(FocusOn::Input) => app.set_focus_on(Some(FocusOn::Input)),
-                            _ => app.set_focus_on(Some(FocusOn::Input)),
-                        },
+                        KeyCode::Up => {
+                            if let Some(FocusOn::Input) = app.focus_on() {
+                                app.set_focus_on(Some(FocusOn::Message(app.messages().len() - 1)));
+                                app.set_cursor_mode(CursorMode::Normal);
+                            }
+                        }
 
                         _ => {}
                     },
@@ -404,11 +428,17 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             );
 
             f.render_stateful_widget(
-                List::new(app.messages().to_vec()).scroll_padding(1),
+                List::new(app.messages().to_vec())
+                    .scroll_padding(1)
+                    .highlight_symbol(" >> "),
                 chunks[1],
                 &mut ListState::default()
-                    .with_selected(Some(app.messages().len()))
-                    .with_offset(2),
+                    .with_selected(if let Some(FocusOn::Message(n)) = app.focus_on() {
+                        Some(*n)
+                    } else {
+                        None
+                    })
+                    .with_offset(20),
             );
 
             f.render_widget(

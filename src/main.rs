@@ -1,7 +1,10 @@
+mod admin;
 mod app;
 mod ui;
+mod ui_admin;
 
-use app::App;
+use admin::Admin;
+// use app::App;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use std::io::{stdout, Result};
 
@@ -9,13 +12,22 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new();
+    // let mut app = App::new();
 
-    app.setup()?;
+    // app.setup()?;
 
-    app.run(&mut terminal)?;
+    // app.run(&mut terminal)?;
 
-    app.cleanup()?;
+    // app.cleanup()?;
+    //
+
+    let mut admin = Admin::new();
+
+    admin.setup()?;
+
+    admin.run(&mut terminal)?;
+
+    admin.cleanup()?;
 
     Ok(())
 }

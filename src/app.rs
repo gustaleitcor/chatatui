@@ -35,6 +35,7 @@ pub enum FocusOn {
     Username,
     Password,
     Input,
+    Message(usize),
 }
 
 pub struct App {
@@ -46,7 +47,7 @@ pub struct App {
     message: String,
     error: String,
     user: User,
-    pgConn: PgConnection,
+    pg_conn: PgConnection,
 }
 
 impl App {
@@ -64,7 +65,7 @@ impl App {
             cursor_mode: CursorMode::Normal,
             focus_on: None,
             error: String::new(),
-            pgConn: establish_connection(),
+            pg_conn: establish_connection(),
         }
     }
 
@@ -214,12 +215,12 @@ impl App {
         &self.error
     }
 
-    pub fn pgConn(&mut self) -> &mut PgConnection {
-        &mut self.pgConn
+    pub fn pg_conn(&mut self) -> &mut PgConnection {
+        &mut self.pg_conn
     }
 
-    pub fn set_pgConn(&mut self, pgConn: PgConnection) {
-        self.pgConn = pgConn;
+    pub fn set_pg_conn(&mut self, pg_conn: PgConnection) {
+        self.pg_conn = pg_conn;
     }
 
     pub fn user(&self) -> &User {
