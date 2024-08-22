@@ -187,7 +187,8 @@ impl Admin {
         self.db_cursor = db_cursor;
     }
 
-    pub fn fetch_users(&mut self, limit: i64) -> Option<usize> {
+    // returns the number of users fetched
+    pub fn fetch_users(&mut self, limit: i64) -> usize {
         let db_cursor = self.db_cursor();
 
         self.users = match crud_bd::crud::user::get_users_with_pagination(
@@ -197,7 +198,7 @@ impl Admin {
         ) {
             Ok(users) => {
                 if users.is_empty() {
-                    return Some(0);
+                    return 0;
                 }
                 users
             }
@@ -208,18 +209,17 @@ impl Admin {
             }
         };
 
-        Some(self.users.len())
+        self.users.len()
     }
 
     pub fn next_users_page(&mut self, limit: i64) -> usize {
-        self.set_db_cursor(self.db_cursor() + limit);
+        self.set_db_cursor(self.db_cursor().saturating_add(limit));
 
-        if let Some(n) = self.fetch_users(limit) {
-            self.set_db_cursor(self.db_cursor + n as i64 - limit);
-            return n;
-        }
+        let n = self.fetch_users(limit);
 
-        0
+        self.set_db_cursor(self.db_cursor + n as i64 - limit);
+
+        n
     }
 
     pub fn prev_users_page(&mut self, limit: i64) -> usize {
@@ -229,11 +229,9 @@ impl Admin {
             self.set_db_cursor(self.db_cursor() - limit);
         }
 
-        if let Some(n) = self.fetch_users(limit) {
-            self.set_db_cursor(self.db_cursor - n as i64 + limit);
-            return n;
-        }
+        let n = self.fetch_users(limit);
 
-        0
+        self.set_db_cursor(self.db_cursor - n as i64 + limit);
+        n
     }
 }

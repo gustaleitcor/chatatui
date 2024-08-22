@@ -1,3 +1,5 @@
+use std::{cmp::min_by, ops::Rem};
+
 use ratatui::{
     crossterm::event::{Event, KeyCode},
     layout::{Alignment, Constraint, Direction, Layout, Rows},
@@ -37,6 +39,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                     KeyCode::Char('q') => {
                         app.set_current_screen(AdminCurrentScreen::Exit);
                     }
+
                     KeyCode::Down => {
                         if let Some(AdminFocusOn::Line(n)) = app.focus_on() {
                             app.set_focus_on(Some(AdminFocusOn::Line((n + 1) % 3)));
@@ -57,7 +60,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                             match n {
                                 0 => {
                                     app.set_db_cursor(0);
-                                    app.fetch_users(10);
+                                    app.fetch_users(f.size().height.saturating_sub(6) as i64); // MAGIC NUMBER 6
                                     app.set_current_screen(AdminCurrentScreen::Users);
                                 }
                                 1 => {
@@ -122,38 +125,6 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
             );
         }
         AdminCurrentScreen::Users => {
-            if let Some(Event::Key(key)) = current_event {
-                match key.code {
-                    KeyCode::Char('q') => {
-                        app.set_current_screen(AdminCurrentScreen::Exit);
-                    }
-                    KeyCode::Down => {
-                        if let Some(AdminFocusOn::Line(n)) = app.focus_on() {
-                            if *n < app.users().len() - 1 {
-                                app.set_focus_on(Some(AdminFocusOn::Line(n + 1)));
-                            } else {
-                                let idx = app.next_users_page(10);
-                                if idx != 0 {
-                                    app.set_focus_on(Some(AdminFocusOn::Line(0)));
-                                }
-                            }
-                        }
-                    }
-                    KeyCode::Up => {
-                        if let Some(AdminFocusOn::Line(n)) = app.focus_on() {
-                            if *n != 0 {
-                                app.set_focus_on(Some(AdminFocusOn::Line(n - 1)));
-                            } else {
-                                let idx = app.prev_users_page(10);
-                                app.set_focus_on(Some(AdminFocusOn::Line(idx - 1)));
-                            }
-                        }
-                    }
-
-                    _ => {}
-                }
-            }
-
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(
@@ -167,10 +138,85 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                 )
                 .split(f.size());
 
+            if let Some(Event::Resize(_, _)) = current_event {
+                app.fetch_users(chunks[1].height.saturating_sub(1) as i64);
+
+                if app.users().is_empty() {
+                    app.set_focus_on(None);
+                } else {
+                    match app.focus_on() {
+                        Some(AdminFocusOn::Line(n)) => {
+                            if *n >= app.users().len() {
+                                app.set_focus_on(Some(AdminFocusOn::Line(app.users().len() - 1)));
+                            }
+                        }
+                        _ => {
+                            app.set_focus_on(Some(AdminFocusOn::Line(0)));
+                        }
+                    }
+                }
+            }
+
+            if let Some(Event::Key(key)) = current_event {
+                match key.code {
+                    KeyCode::Char('q') => {
+                        app.set_current_screen(AdminCurrentScreen::Menu);
+                    }
+                    KeyCode::Down => {
+                        if let Some(AdminFocusOn::Line(n)) = app.focus_on() {
+                            if !app.users().is_empty() {
+                                if *n < app.users().len() - 1 {
+                                    app.set_focus_on(Some(AdminFocusOn::Line(n + 1)));
+                                } else {
+                                    app.next_users_page(chunks[1].height.saturating_sub(1) as i64);
+                                    app.set_focus_on(Some(AdminFocusOn::Line(0)));
+                                }
+                            } else {
+                                app.set_focus_on(None);
+                            }
+                        }
+                    }
+                    KeyCode::Up => {
+                        if let Some(AdminFocusOn::Line(n)) = app.focus_on() {
+                            if !app.users().is_empty() {
+                                if *n > 0 {
+                                    app.set_focus_on(Some(AdminFocusOn::Line(n - 1)));
+                                } else {
+                                    app.prev_users_page(chunks[1].height.saturating_sub(1) as i64);
+                                    app.set_focus_on(Some(AdminFocusOn::Line(
+                                        app.users().len() - 1,
+                                    )));
+                                }
+                            } else {
+                                app.set_focus_on(None);
+                            }
+                        }
+                    }
+
+                    _ => {}
+                }
+            }
+
+            let line = match app.focus_on() {
+                Some(AdminFocusOn::Line(n)) => *n as i32,
+                _ => -1,
+            };
+
             f.render_widget(
-                Paragraph::new("Users")
-                    .alignment(Alignment::Center)
-                    .block(Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)),
+                Paragraph::new("Users").alignment(Alignment::Center).block(
+                    Block::default()
+                        .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+                        .title(format!(
+                            "db_cursor: {} | Page: {} | Userslen: {} | Line: {} | TableHeight: {}",
+                            app.db_cursor(),
+                            app.db_cursor()
+                                .checked_rem(chunks[1].as_size().height as i64)
+                                .unwrap_or(0),
+                            app.users().len(),
+                            line,
+                            chunks[1].as_size().height
+                        )),
+                ),
                 chunks[0],
             );
 
@@ -195,8 +241,8 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                     [
                         // + 1 is for padding.
                         Constraint::Length(5),
-                        Constraint::Min(30),
-                        Constraint::Min(30),
+                        Constraint::Max(25),
+                        Constraint::Max(25),
                     ],
                 )
                 .header(header)
@@ -207,7 +253,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                     if let Some(AdminFocusOn::Line(n)) = app.focus_on() {
                         Some(*n)
                     } else {
-                        None
+                        Some(0)
                     },
                 ),
             );
@@ -220,10 +266,15 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                         .block(Block::default().borders(Borders::LEFT | Borders::RIGHT)),
                     chunks[2],
                 );
+            } else {
+                f.render_widget(
+                    Block::default().borders(Borders::LEFT | Borders::RIGHT),
+                    chunks[2],
+                );
             }
 
             f.render_widget(
-                Paragraph::new("Press 'f' to filter | Press 'q' to exit")
+                Paragraph::new("Press 'f' to filter | Press 'q' to goto menu")
                     .alignment(Alignment::Center)
                     .block(
                         Block::default()
