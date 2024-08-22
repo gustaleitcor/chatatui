@@ -21,9 +21,13 @@ use crate::{
     app::{CurrentScreen, CursorMode, FocusOn},
     ui_admin::{self, ui_admin},
 };
+pub enum AdminCursorMode {
+    View,
+    Edit(char),
+}
 
 pub enum AdminFocusOn {
-    Line(usize),
+    Line(usize, usize),
 }
 
 pub enum AdminCurrentScreen {
@@ -38,12 +42,13 @@ pub struct Admin {
     current_event: Arc<Mutex<Option<Event>>>,
     current_screen: AdminCurrentScreen,
     focus_on: Option<AdminFocusOn>,
-    cursor_mode: CursorMode,
+    cursor_mode: AdminCursorMode,
     error: Option<String>,
     pg_conn: PgConnection,
     db_cursor: i64,
     input: String,
     users: Vec<User>,
+    user: User,
     messages: Vec<Message>,
     chats: Vec<Chat>,
 }
@@ -53,7 +58,7 @@ impl Admin {
         Admin {
             current_event: Arc::new(Mutex::new(None)),
             current_screen: AdminCurrentScreen::Menu,
-            cursor_mode: CursorMode::Normal,
+            cursor_mode: AdminCursorMode::View,
             focus_on: None,
             error: None,
             pg_conn: establish_connection(),
@@ -62,6 +67,11 @@ impl Admin {
             users: Vec::new(),
             messages: Vec::new(),
             chats: Vec::new(),
+            user: User {
+                id: 0,
+                username: String::new(),
+                password: String::new(),
+            },
         }
     }
 
@@ -124,27 +134,27 @@ impl Admin {
         self.current_event.lock().unwrap().take()
     }
 
-    pub fn set_cursor_mode(&mut self, mode: CursorMode) {
+    pub fn toggle_cursor_mode(&mut self) {
+        self.cursor_mode = match self.cursor_mode {
+            AdminCursorMode::View => AdminCursorMode::Edit('x'),
+            AdminCursorMode::Edit(_) => AdminCursorMode::View,
+        };
+    }
+
+    pub fn set_cursor_mode(&mut self, mode: AdminCursorMode) {
         self.cursor_mode = mode;
     }
 
-    pub fn focus_on(&self) -> Option<&AdminFocusOn> {
-        self.focus_on.as_ref()
+    pub fn focus_on(&self) -> &Option<AdminFocusOn> {
+        &self.focus_on
     }
 
     pub fn set_focus_on(&mut self, focus_on: Option<AdminFocusOn>) {
         self.focus_on = focus_on;
     }
 
-    pub fn cursor_mode(&self) -> &CursorMode {
+    pub fn cursor_mode(&self) -> &AdminCursorMode {
         &self.cursor_mode
-    }
-
-    pub fn toggle_cursor_mode(&mut self) {
-        self.cursor_mode = match self.cursor_mode {
-            CursorMode::Normal => CursorMode::Insert,
-            CursorMode::Insert => CursorMode::Normal,
-        };
     }
 
     pub fn set_error(&mut self, error: String) {
@@ -157,6 +167,30 @@ impl Admin {
 
     pub fn pg_conn(&mut self) -> &mut PgConnection {
         &mut self.pg_conn
+    }
+
+    pub fn get_user(&self) -> &User {
+        &self.user
+    }
+
+    pub fn set_user(&mut self, user: User) {
+        self.user = user;
+    }
+
+    pub fn pop_user_username(&mut self) -> Option<char> {
+        self.user.username.pop()
+    }
+
+    pub fn push_user_username(&mut self, c: char) {
+        self.user.username.push(c);
+    }
+
+    pub fn pop_user_password(&mut self) -> Option<char> {
+        self.user.password.pop()
+    }
+
+    pub fn push_user_password(&mut self, c: char) {
+        self.user.password.push(c);
     }
 
     pub fn set_pg_conn(&mut self, pg_conn: PgConnection) {
@@ -173,6 +207,10 @@ impl Admin {
 
     pub fn users(&self) -> &Vec<User> {
         &self.users
+    }
+
+    pub fn users_mut(&mut self) -> &mut Vec<User> {
+        &mut self.users
     }
 
     pub fn set_users(&mut self, users: Vec<User>) {
@@ -233,5 +271,23 @@ impl Admin {
 
         self.set_db_cursor(self.db_cursor - n as i64 + limit);
         n
+    }
+}
+
+impl AdminCursorMode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            AdminCursorMode::View => "View",
+            AdminCursorMode::Edit('e') => "Update",
+            AdminCursorMode::Edit(_) => "Edit",
+        }
+    }
+}
+
+impl Clone for AdminFocusOn {
+    fn clone(&self) -> Self {
+        match self {
+            AdminFocusOn::Line(l, c) => AdminFocusOn::Line(*l, *c),
+        }
     }
 }
