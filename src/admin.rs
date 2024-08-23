@@ -17,10 +17,7 @@ use ratatui::{
     Terminal,
 };
 
-use crate::{
-    app::{CurrentScreen, CursorMode, FocusOn},
-    ui_admin::{self, ui_admin},
-};
+use crate::ui_admin::ui_admin;
 pub enum AdminCursorMode {
     View,
     Edit(char),
@@ -43,12 +40,12 @@ pub struct Admin {
     current_screen: AdminCurrentScreen,
     focus_on: Option<AdminFocusOn>,
     cursor_mode: AdminCursorMode,
-    error: Option<String>,
+    error: Option<Result<String>>,
     pg_conn: PgConnection,
     db_cursor: i64,
     input: String,
     users: Vec<User>,
-    user: User,
+    new_user: User,
     messages: Vec<Message>,
     chats: Vec<Chat>,
 }
@@ -67,7 +64,7 @@ impl Admin {
             users: Vec::new(),
             messages: Vec::new(),
             chats: Vec::new(),
-            user: User {
+            new_user: User {
                 id: 0,
                 username: String::new(),
                 password: String::new(),
@@ -137,6 +134,10 @@ impl Admin {
     pub fn toggle_cursor_mode(&mut self) {
         self.cursor_mode = match self.cursor_mode {
             AdminCursorMode::View => AdminCursorMode::Edit('x'),
+            AdminCursorMode::Edit('c') => {
+                self.users_mut().pop();
+                AdminCursorMode::View
+            }
             AdminCursorMode::Edit(_) => AdminCursorMode::View,
         };
     }
@@ -157,40 +158,16 @@ impl Admin {
         &self.cursor_mode
     }
 
-    pub fn set_error(&mut self, error: String) {
-        self.error = Some(error);
+    pub fn prompt_message(&self) -> &Option<Result<String>> {
+        &self.error
     }
 
-    pub fn error(&self) -> &Option<String> {
-        &self.error
+    pub fn set_prompt_message(&mut self, error: Option<Result<String>>) {
+        self.error = error;
     }
 
     pub fn pg_conn(&mut self) -> &mut PgConnection {
         &mut self.pg_conn
-    }
-
-    pub fn get_user(&self) -> &User {
-        &self.user
-    }
-
-    pub fn set_user(&mut self, user: User) {
-        self.user = user;
-    }
-
-    pub fn pop_user_username(&mut self) -> Option<char> {
-        self.user.username.pop()
-    }
-
-    pub fn push_user_username(&mut self, c: char) {
-        self.user.username.push(c);
-    }
-
-    pub fn pop_user_password(&mut self) -> Option<char> {
-        self.user.password.pop()
-    }
-
-    pub fn push_user_password(&mut self, c: char) {
-        self.user.password.push(c);
     }
 
     pub fn set_pg_conn(&mut self, pg_conn: PgConnection) {
@@ -203,6 +180,18 @@ impl Admin {
 
     pub fn set_input(&mut self, input: String) {
         self.input = input;
+    }
+
+    pub fn new_user(&self) -> &User {
+        &self.new_user
+    }
+
+    pub fn new_user_mut(&mut self) -> &mut User {
+        &mut self.new_user
+    }
+
+    pub fn set_new_user(&mut self, new_user: User) {
+        self.new_user = new_user;
     }
 
     pub fn users(&self) -> &Vec<User> {
@@ -240,8 +229,12 @@ impl Admin {
                 }
                 users
             }
-            Err(e) => {
-                self.set_error(e.to_string());
+            Err(err) => {
+                self.set_prompt_message(Some(Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to fetch user. {:?}", err.to_string()),
+                ))));
+
                 self.set_db_cursor(0);
                 Vec::new()
             }
@@ -269,7 +262,12 @@ impl Admin {
 
         let n = self.fetch_users(limit);
 
-        self.set_db_cursor(self.db_cursor - n as i64 + limit);
+        if self.db_cursor - limit < 0 {
+            self.set_db_cursor(0);
+        } else {
+            self.set_db_cursor(self.db_cursor - n as i64 + limit);
+        }
+
         n
     }
 }
@@ -279,6 +277,7 @@ impl AdminCursorMode {
         match self {
             AdminCursorMode::View => "View",
             AdminCursorMode::Edit('e') => "Update",
+            AdminCursorMode::Edit('c') => "Create",
             AdminCursorMode::Edit(_) => "Edit",
         }
     }
