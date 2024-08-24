@@ -4,13 +4,13 @@ use ratatui::{
 };
 
 use crate::{
-    pages::{menu::Menu, page::Page},
+    pages::{menu::Menu, page::Page, users::Users},
     state::CurrentScreen,
 };
 
 use crate::admin::Admin;
 
-pub fn ui_admin(frame: &mut Frame, app: &mut Admin, menu: &mut Menu) {
+pub fn ui_admin(frame: &mut Frame, app: &mut Admin, menu: &mut Menu, users: &mut Users) {
     let app_state = app.state_mut();
 
     // Does not consume the event because menu should handle it
@@ -23,9 +23,8 @@ pub fn ui_admin(frame: &mut Frame, app: &mut Admin, menu: &mut Menu) {
 
     // renders the current screen
     match app_state.current_screen() {
-        CurrentScreen::Menu => menu.run(frame, app_state).unwrap(),
-
-        CurrentScreen::Users => todo!(""),
+        CurrentScreen::Menu => menu.run(frame, app).unwrap(),
+        CurrentScreen::Users => users.run(frame, app).unwrap(),
 
         // CurrentScreen::Users => {
         //     let chunks = Layout::default()

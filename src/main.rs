@@ -1,4 +1,5 @@
 mod admin;
+mod database;
 mod pages;
 mod state;
 mod ui_admin;

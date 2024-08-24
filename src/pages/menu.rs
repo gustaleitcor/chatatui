@@ -11,7 +11,10 @@ use ratatui::{
     Frame,
 };
 
-use crate::{admin::AdminFocusOn, state::State};
+use crate::{
+    admin::{Admin, AdminFocusOn},
+    state::State,
+};
 
 use super::page::Page;
 
@@ -66,7 +69,8 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
         Ok(())
     }
 
-    fn handle_input(&mut self, key: &KeyEvent, state: &mut State) -> Result<()> {
+    fn handle_input(&mut self, app: &mut Admin, key: &KeyEvent) -> Result<()> {
+        let state = app.state_mut();
         match key.code {
             KeyCode::Char('q') => state.goto_exit(),
 
@@ -125,7 +129,7 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
         Ok(())
     }
 
-    fn handle_resize(&mut self, _: (u16, u16)) -> Result<()> {
+    fn handle_resize(&mut self, _: &mut Admin, _: (u16, u16)) -> Result<()> {
         Ok(())
     }
 }
