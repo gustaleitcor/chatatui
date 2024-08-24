@@ -1,5 +1,5 @@
 use crud_bd::crud::user::User;
-use diesel::result::Error;
+// use diesel::result::Error;
 use ratatui::{
     crossterm::event::{Event, KeyCode},
     layout::{Alignment, Constraint, Direction, Layout},
@@ -166,7 +166,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
 
             if let Some(Event::Key(key)) = current_event {
                 match app.cursor_mode() {
-                    AdminCursorMode::View => match key.code {
+                    AdminCursorMode::View('x') => match key.code {
                         KeyCode::Char('q') => {
                             app.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
                             app.set_current_screen(AdminCurrentScreen::Menu);
@@ -187,6 +187,26 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                                 }
                             }
                         }
+
+                        KeyCode::Char('f') => {
+
+                            // if let Some(AdminFocusOn::Line(n, _)) = app.focus_on() {
+                            //     if !app.users().is_empty() {
+                            //         if *n < app.users().len() - 1 {
+                            //             app.set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
+                            //         } else {
+                            //             app.next_users_page(
+                            //                 chunks[1].height.saturating_sub(1) as i64
+                            //             );
+                            //             app.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
+                            //         }
+                            //     } else {
+                            //         app.set_focus_on(None);
+                            //     }
+                            // }
+
+                        }
+
                         KeyCode::Up => {
                             if let Some(AdminFocusOn::Line(n, _)) = app.focus_on() {
                                 if !app.users().is_empty() {
@@ -650,7 +670,19 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
             };
 
             match app.cursor_mode() {
-                AdminCursorMode::View => {
+                AdminCursorMode::View('f') => {
+                    f.render_widget(
+                        Paragraph::new("Press 'f' to filter | Press 'q' to goto menu")
+                            .alignment(Alignment::Center)
+                            .block(
+                                Block::default()
+                                    .borders(Borders::TOP)
+                                    .title(app.cursor_mode().as_str()),
+                            ),
+                        chunks[3],
+                    );
+                }
+                AdminCursorMode::View(_) => {
                     f.render_widget(
                         Paragraph::new("Press 'f' to filter | Press 'q' to goto menu")
                             .alignment(Alignment::Center)

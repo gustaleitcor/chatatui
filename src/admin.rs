@@ -19,7 +19,7 @@ use ratatui::{
 
 use crate::ui_admin::ui_admin;
 pub enum AdminCursorMode {
-    View,
+    View(char),
     Edit(char),
 }
 
@@ -44,6 +44,7 @@ pub struct Admin {
     pg_conn: PgConnection,
     db_cursor: i64,
     input: String,
+    filter: Option<String>,
     users: Vec<User>,
     new_user: User,
     messages: Vec<Message>,
@@ -55,12 +56,13 @@ impl Admin {
         Admin {
             current_event: Arc::new(Mutex::new(None)),
             current_screen: AdminCurrentScreen::Menu,
-            cursor_mode: AdminCursorMode::View,
+            cursor_mode: AdminCursorMode::View('x'),
             focus_on: None,
             error: None,
             pg_conn: establish_connection(),
             db_cursor: 0,
             input: String::new(),
+            filter: None,
             users: Vec::new(),
             messages: Vec::new(),
             chats: Vec::new(),
@@ -133,12 +135,15 @@ impl Admin {
 
     pub fn toggle_cursor_mode(&mut self) {
         self.cursor_mode = match self.cursor_mode {
-            AdminCursorMode::View => AdminCursorMode::Edit('x'),
+            AdminCursorMode::View(_) => AdminCursorMode::Edit('x'),
             AdminCursorMode::Edit('c') => {
                 self.users_mut().pop();
-                AdminCursorMode::View
+                AdminCursorMode::Edit('x')
             }
-            AdminCursorMode::Edit(_) => AdminCursorMode::View,
+            AdminCursorMode::Edit('u') => {
+                AdminCursorMode::Edit('x')
+            }
+            AdminCursorMode::Edit(_) => AdminCursorMode::View('x'),
         };
     }
 
@@ -182,6 +187,14 @@ impl Admin {
         self.input = input;
     }
 
+    pub fn filter(&self) -> &Option<String> {
+        &self.filter
+    }
+
+    pub fn set_filter(&mut self, filter: Option<String>) {
+        self.filter = filter;
+    }
+
     pub fn new_user(&self) -> &User {
         &self.new_user
     }
@@ -217,11 +230,13 @@ impl Admin {
     // returns the number of users fetched
     pub fn fetch_users(&mut self, limit: i64) -> usize {
         let db_cursor = self.db_cursor();
+        let filter = self.filter().to_owned();
 
         self.users = match crud_bd::crud::user::get_users_with_pagination(
             self.pg_conn(),
             db_cursor,
             limit,
+            filter,
         ) {
             Ok(users) => {
                 if users.is_empty() {
@@ -275,8 +290,9 @@ impl Admin {
 impl AdminCursorMode {
     pub fn as_str(&self) -> &str {
         match self {
-            AdminCursorMode::View => "View",
-            AdminCursorMode::Edit('e') => "Update",
+            AdminCursorMode::View('f') => "Filter",
+            AdminCursorMode::View(_) => "View",
+            AdminCursorMode::Edit('u') => "Update",
             AdminCursorMode::Edit('c') => "Create",
             AdminCursorMode::Edit(_) => "Edit",
         }
