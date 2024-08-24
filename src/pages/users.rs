@@ -15,7 +15,7 @@ use ratatui::{
 };
 
 use crate::{
-    admin::{Admin, AdminCursorMode, AdminFocusOn},
+    app::{App, CursorMode, FocusOn},
     state::State,
 };
 
@@ -51,7 +51,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
     fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()> {
         let mut debug_row: usize = 0;
         let mut debug_col: usize = 0;
-        if let Some(AdminFocusOn::Line(row, col)) = state.focus_on().clone() {
+        if let Some(FocusOn::Line(row, col)) = state.focus_on().clone() {
             debug_row = row;
             debug_col = col;
         }
@@ -82,8 +82,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             .height(1);
 
         let rows = self.users.iter().enumerate().map(|(i, data)| {
-            if let AdminCursorMode::Edit('u') = state.cursor_mode() {
-                if let Some(AdminFocusOn::Line(row, col)) = state.focus_on() {
+            if let CursorMode::Edit('u') = state.cursor_mode() {
+                if let Some(FocusOn::Line(row, col)) = state.focus_on() {
                     if i == *row {
                         let mut cells = vec![];
                         for (j, cell) in [
@@ -108,8 +108,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 }
             }
 
-            if let AdminCursorMode::Edit('c') = state.cursor_mode() {
-                if let Some(AdminFocusOn::Line(row, col)) = state.focus_on() {
+            if let CursorMode::Edit('c') = state.cursor_mode() {
+                if let Some(FocusOn::Line(row, col)) = state.focus_on() {
                     if i == *row {
                         let mut cells = vec![];
                         for (j, cell) in [
@@ -156,7 +156,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             .block(Block::default().borders(Borders::LEFT | Borders::RIGHT)),
             self.chunks[1],
             &mut TableState::new().with_selected(
-                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on() {
+                if let Some(FocusOn::Line(n, _)) = state.focus_on() {
                     Some(*n)
                 } else {
                     Some(0)
@@ -197,9 +197,11 @@ impl Page<CrosstermBackend<Stdout>> for Users {
         let guide_align = Alignment::Center;
 
         let guide_content = match state.cursor_mode() {
-            AdminCursorMode::Edit('d') => "Press 'y' to confirm | Press 'esc' to cancel",
-            AdminCursorMode::View(_) => "Press 'f' to filter | Press 'q' to goto menu",
-            AdminCursorMode::Edit(_) => "Press 'c' to create | Press 'd' to delete | Press 'u' to update | Press 'q' to goto menu",
+            CursorMode::Edit('c') => "Press 'Enter' to confirm | Press 'esc' to cancel",
+            CursorMode::Edit('u') => "Press 'Enter' to confirm | Press 'esc' to cancel",
+            CursorMode::Edit('d') => "Press 'y' to confirm | Press 'esc' to cancel",
+            CursorMode::View(_) => "Press 'f' to filter | Press 'q' to goto menu",
+            CursorMode::Edit(_) => "Press 'c' to create | Press 'd' to delete | Press 'u' to update | Press 'q' to goto menu",
         };
 
         frame.render_widget(
@@ -211,7 +213,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
         Ok(())
     }
-    fn setup(&mut self, frame: &mut Frame) -> Result<()> {
+    fn layout(&mut self, frame: &mut Frame) -> Result<()> {
         self.chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(
@@ -229,19 +231,17 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
         Ok(())
     }
-    fn handle_input(&mut self, app: &mut Admin, key: &KeyEvent) -> Result<()> {
+    fn handle_input(&mut self, app: &mut App, key: &KeyEvent) -> Result<()> {
         match app.state().cursor_mode() {
-            AdminCursorMode::View('x') => match key.code {
+            CursorMode::View('x') => match key.code {
                 KeyCode::Char('q') => {
-                    app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
                     app.state_mut().goto_menu();
                 }
                 KeyCode::Down => {
-                    if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n < self.users.len() - 1 {
-                                app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
+                                app.state_mut().set_focus_on(Some(FocusOn::Line(n + 1, 1)));
                             } else {
                                 // TODO: This is disgusting
 
@@ -256,7 +256,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
                                 if !users.is_empty() {
                                     self.users = users;
-                                    app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
+                                    app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
                                 }
                             }
                         } else {
@@ -266,11 +266,10 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 }
 
                 KeyCode::Up => {
-                    if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n > 0 {
-                                app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
+                                app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
                             } else {
                                 let users = app
                                     .database()
@@ -283,10 +282,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
                                 if !self.db_cursor != 0 && n != 0 {
                                     self.users = users;
-                                    app.state_mut().set_focus_on(Some(AdminFocusOn::Line(
-                                        self.users.len() - 1,
-                                        1,
-                                    )));
+                                    app.state_mut()
+                                        .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
                                 }
                             }
                         } else {
@@ -300,47 +297,20 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 _ => {}
             },
 
-            AdminCursorMode::Edit('x') => match key.code {
-                KeyCode::Char('d') => {
-                    if !self.users.is_empty() {
-                        if let Some(AdminFocusOn::Line(row, _)) = app.state().focus_on() {
-                            if self.users.get(*row).is_some() {
-                                app.state_mut().set_cursor_mode(AdminCursorMode::Edit('d'));
-                            }
-                        }
-                    }
-                }
-
-                KeyCode::Char('u') => {
-                    if !self.users.is_empty() {
-                        if let Some(AdminFocusOn::Line(row, _)) = app.state().focus_on() {
-                            if self.users.get(*row).is_some() {
-                                app.state_mut().set_cursor_mode(AdminCursorMode::Edit('u'));
-                            }
-                        }
-                    }
-                }
-
-                KeyCode::Char('c') => {
-                    app.state_mut().set_cursor_mode(AdminCursorMode::Edit('c'));
-                    self.users.push(User {
-                        id: -1,
-                        username: "".to_string(),
-                        password: "".to_string(),
-                    });
-                    app.state_mut()
-                        .set_focus_on(Some(AdminFocusOn::Line(self.users.len() - 1, 1)));
+            CursorMode::Edit('x') => match key.code {
+                KeyCode::Char('q') => {
+                    app.state_mut().goto_menu();
                 }
 
                 KeyCode::Down => {
-                    if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n < self.users.len() - 1 {
-                                app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
+                                app.state_mut().set_focus_on(Some(FocusOn::Line(n + 1, 1)));
                             } else {
-                                // TODO: handle error
-                                self.users = app
+                                // TODO: This is disgusting
+
+                                let users = app
                                     .database()
                                     .next_users_page(
                                         self.available_rows,
@@ -348,7 +318,11 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                         self.filter.clone(),
                                     )
                                     .unwrap();
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
+
+                                if !users.is_empty() {
+                                    self.users = users;
+                                    app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
+                                }
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
@@ -357,14 +331,12 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 }
 
                 KeyCode::Up => {
-                    if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n > 0 {
-                                app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
+                                app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
                             } else {
-                                // TODO: handle error
-                                self.users = app
+                                let users = app
                                     .database()
                                     .prev_users_page(
                                         self.available_rows,
@@ -372,10 +344,12 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                         self.filter.clone(),
                                     )
                                     .unwrap();
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(
-                                    self.users.len() - 1,
-                                    1,
-                                )));
+
+                                if !self.db_cursor != 0 && n != 0 {
+                                    self.users = users;
+                                    app.state_mut()
+                                        .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
+                                }
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
@@ -383,22 +357,51 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                     }
                 }
 
+                KeyCode::Char('d') => {
+                    if !self.users.is_empty() {
+                        if let Some(FocusOn::Line(row, _)) = app.state().focus_on() {
+                            if self.users.get(*row).is_some() {
+                                app.state_mut().set_cursor_mode(CursorMode::Edit('d'));
+                            }
+                        }
+                    }
+                }
+
+                KeyCode::Char('u') => {
+                    if !self.users.is_empty() {
+                        if let Some(FocusOn::Line(row, _)) = app.state().focus_on() {
+                            if self.users.get(*row).is_some() {
+                                app.state_mut().set_cursor_mode(CursorMode::Edit('u'));
+                            }
+                        }
+                    }
+                }
+
+                KeyCode::Char('c') => {
+                    app.state_mut().set_cursor_mode(CursorMode::Edit('c'));
+                    self.users.push(User {
+                        id: -1,
+                        username: "".to_string(),
+                        password: "".to_string(),
+                    });
+                    app.state_mut()
+                        .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
+                }
+
                 _ => {}
             },
 
-            AdminCursorMode::Edit('d') => {
+            CursorMode::Edit('d') => {
                 if key.code == KeyCode::Char('y') {
-                    if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             let user = self.users.get(n).unwrap();
                             let user_id = user.id.to_owned();
                             match app.database().delete_user(user_id) {
                                 Ok(_) => {
                                     self.users.remove(n);
-                                    app.state_mut().set_focus_on(Some(AdminFocusOn::Line(
-                                        n.saturating_sub(1),
-                                        1,
-                                    )));
+                                    app.state_mut()
+                                        .set_focus_on(Some(FocusOn::Line(n.saturating_sub(1), 1)));
                                     app.state_mut()
                                         .set_prompt_message(Some(Ok("User deleted".to_string())))
                                 }
@@ -412,11 +415,13 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                             }
                         }
                     }
+
+                    app.state_mut().set_cursor_mode(CursorMode::Edit('x'));
                 }
             }
 
-            AdminCursorMode::Edit('u') => {
-                if let Some(AdminFocusOn::Line(row, col)) = app.state().focus_on().clone() {
+            CursorMode::Edit('u') => {
+                if let Some(FocusOn::Line(row, col)) = app.state().focus_on().clone() {
                     match key.code {
                         KeyCode::Enter => {
                             if let Some(user) = self.users.get_mut(row) {
@@ -479,8 +484,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                             }
 
                             app.state_mut().toggle_cursor_mode();
-                            app.state_mut()
-                                .set_focus_on(Some(AdminFocusOn::Line(row, 1)));
+                            app.state_mut().set_focus_on(Some(FocusOn::Line(row, 1)));
                         }
 
                         KeyCode::Char(c) => {
@@ -518,14 +522,14 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         KeyCode::Left => {
                             if col > 1 {
                                 app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(row, col - 1)));
+                                    .set_focus_on(Some(FocusOn::Line(row, col - 1)));
                             }
                         }
 
                         KeyCode::Right => {
                             if col < 2 {
                                 app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(row, col + 1)));
+                                    .set_focus_on(Some(FocusOn::Line(row, col + 1)));
                             }
                         }
 
@@ -534,8 +538,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 }
             }
 
-            AdminCursorMode::Edit('c') => {
-                if let Some(AdminFocusOn::Line(row, col)) = app.state().focus_on().clone() {
+            CursorMode::Edit('c') => {
+                if let Some(FocusOn::Line(row, col)) = app.state().focus_on().clone() {
                     match key.code {
                         KeyCode::Enter => {
                             // TODO: handle errors
@@ -556,7 +560,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                 ))),
                             }
 
-                            app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
+                            app.state_mut().set_cursor_mode(CursorMode::Edit('x'));
+                            app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
                             // TODO: This can lead to errors
                             self.users = app
                                 .database()
@@ -597,14 +602,14 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         KeyCode::Left => {
                             if col > 1 {
                                 app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(row, col - 1)));
+                                    .set_focus_on(Some(FocusOn::Line(row, col - 1)));
                             }
                         }
 
                         KeyCode::Right => {
                             if col < 2 {
                                 app.state_mut()
-                                    .set_focus_on(Some(AdminFocusOn::Line(row, col + 1)));
+                                    .set_focus_on(Some(FocusOn::Line(row, col + 1)));
                             }
                         }
 
@@ -617,8 +622,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
         }
         Ok(())
     }
-    fn handle_resize(&mut self, app: &mut Admin, _: (u16, u16)) -> Result<()> {
-        if let AdminCursorMode::Edit('c') = app.state().cursor_mode() {
+    fn handle_resize(&mut self, app: &mut App, _: (u16, u16)) -> Result<()> {
+        if let CursorMode::Edit('c') = app.state().cursor_mode() {
             return Ok(());
         }
 
@@ -644,10 +649,10 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             app.state_mut().set_focus_on(None);
         } else {
             match app.state().focus_on() {
-                Some(AdminFocusOn::Line(n, _)) => {
+                Some(FocusOn::Line(n, _)) => {
                     if *n >= self.users.len() {
                         app.state_mut()
-                            .set_focus_on(Some(AdminFocusOn::Line(self.users.len() - 1, 1)));
+                            .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
                     } else if self.users.len() <= self.chunks[1].height.saturating_sub(1) as usize {
                         self.db_cursor = (self.db_cursor as u64).saturating_sub(
                             1 + (self.chunks[1].height.saturating_sub(1) as usize
@@ -656,7 +661,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                     }
                 }
                 _ => {
-                    app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
+                    app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
                 }
             }
         }
@@ -667,6 +672,49 @@ impl Page<CrosstermBackend<Stdout>> for Users {
         // cleanup users
         // cleanup new user form
         // cleanup pagination
+        Ok(())
+    }
+
+    fn setup(&mut self, app: &mut App) -> Result<()> {
+        self.users = match app.database().fetch_users(
+            self.available_rows,
+            self.db_cursor,
+            self.filter.clone(),
+        ) {
+            Ok(users) => users,
+            Err(err) => {
+                app.state_mut()
+                    .set_prompt_message(Some(Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to fetch user. {:?}", err.to_string()),
+                    ))));
+
+                self.db_cursor = 0;
+                Vec::new()
+            }
+        };
+
+        if self.users.is_empty() {
+            app.state_mut().set_focus_on(None);
+        } else {
+            match app.state().focus_on() {
+                Some(FocusOn::Line(n, _)) => {
+                    if *n >= self.users.len() {
+                        app.state_mut()
+                            .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
+                    } else if self.users.len() <= self.chunks[1].height.saturating_sub(1) as usize {
+                        self.db_cursor = (self.db_cursor as u64).saturating_sub(
+                            1 + (self.chunks[1].height.saturating_sub(1) as usize
+                                - self.users.len()) as u64,
+                        ) as i64;
+                    }
+                }
+                _ => {
+                    app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
+                }
+            }
+        }
+
         Ok(())
     }
 }

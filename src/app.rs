@@ -18,25 +18,25 @@ use crate::{
     database::Database,
     pages::{menu::Menu, users::Users},
     state::State,
-    ui_admin::ui_admin,
+    ui::ui,
 };
-pub enum AdminCursorMode {
+pub enum CursorMode {
     View(char),
     Edit(char),
 }
 
-pub enum AdminFocusOn {
+pub enum FocusOn {
     Line(usize, usize),
 }
 
-pub struct Admin {
+pub struct App {
     database: Database,
     state: State,
 }
 
-impl Admin {
-    pub fn new() -> Admin {
-        Admin {
+impl App {
+    pub fn new() -> App {
+        App {
             database: Database::new(),
             state: State::new(),
         }
@@ -70,7 +70,7 @@ impl Admin {
             let now = std::time::Instant::now();
 
             terminal.draw(|f| {
-                ui_admin(f, self, &mut menu, &mut users);
+                ui(f, self, &mut menu, &mut users);
             })?;
 
             if self.state().has_exited() {
@@ -78,6 +78,12 @@ impl Admin {
             }
 
             sleep(Duration::from_millis(16).saturating_sub(now.elapsed()));
+
+            self.state().error_timestamp().map(|timestamp| {
+                if timestamp.elapsed().as_secs() >= 5 {
+                    self.state_mut().clear_prompt_message();
+                }
+            });
         }
 
         Ok(())
@@ -96,22 +102,22 @@ impl Admin {
     }
 }
 
-impl AdminCursorMode {
+impl CursorMode {
     pub fn as_str(&self) -> &str {
         match self {
-            AdminCursorMode::View('f') => "Filter",
-            AdminCursorMode::View(_) => "View",
-            AdminCursorMode::Edit('u') => "Update",
-            AdminCursorMode::Edit('c') => "Create",
-            AdminCursorMode::Edit(_) => "Edit",
+            CursorMode::View('f') => "Filter",
+            CursorMode::View(_) => "View",
+            CursorMode::Edit('u') => "Update",
+            CursorMode::Edit('c') => "Create",
+            CursorMode::Edit(_) => "Edit",
         }
     }
 }
 
-impl Clone for AdminFocusOn {
+impl Clone for FocusOn {
     fn clone(&self) -> Self {
         match self {
-            AdminFocusOn::Line(l, c) => AdminFocusOn::Line(*l, *c),
+            FocusOn::Line(l, c) => FocusOn::Line(*l, *c),
         }
     }
 }

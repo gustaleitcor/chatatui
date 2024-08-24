@@ -1,10 +1,10 @@
-mod admin;
+mod app;
 mod database;
 mod pages;
 mod state;
-mod ui_admin;
+mod ui;
 
-use admin::Admin;
+use app::App;
 // use app::App;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use std::io::{stdout, Result};
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
 
     // app.cleanup()?;
 
-    let mut admin = Admin::new();
+    let mut admin = App::new();
 
     admin.setup()?;
 

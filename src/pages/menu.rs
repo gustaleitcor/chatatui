@@ -12,7 +12,7 @@ use ratatui::{
 };
 
 use crate::{
-    admin::{Admin, AdminFocusOn},
+    app::{App, FocusOn},
     state::State,
 };
 
@@ -46,10 +46,10 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
                 .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
             self.chunks[1],
             &mut ListState::default().with_selected(
-                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on() {
+                if let Some(FocusOn::Line(n, _)) = state.focus_on() {
                     Some(*n)
                 } else {
-                    state.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
+                    state.set_focus_on(Some(FocusOn::Line(0, 1)));
                     Some(0)
                 },
             ),
@@ -69,29 +69,29 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
         Ok(())
     }
 
-    fn handle_input(&mut self, app: &mut Admin, key: &KeyEvent) -> Result<()> {
+    fn handle_input(&mut self, app: &mut App, key: &KeyEvent) -> Result<()> {
         let state = app.state_mut();
         match key.code {
             KeyCode::Char('q') => state.goto_exit(),
 
             KeyCode::Up => {
-                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on() {
+                if let Some(FocusOn::Line(n, _)) = state.focus_on() {
                     if *n != 0 {
-                        state.set_focus_on(Some(AdminFocusOn::Line((n - 1) % 3, 1)));
+                        state.set_focus_on(Some(FocusOn::Line((n - 1) % 3, 1)));
                     } else {
-                        state.set_focus_on(Some(AdminFocusOn::Line(2, 1)));
+                        state.set_focus_on(Some(FocusOn::Line(2, 1)));
                     }
                 }
             }
 
             KeyCode::Down => {
-                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on() {
-                    state.set_focus_on(Some(AdminFocusOn::Line((n + 1) % 3, 1)));
+                if let Some(FocusOn::Line(n, _)) = state.focus_on() {
+                    state.set_focus_on(Some(FocusOn::Line((n + 1) % 3, 1)));
                 }
             }
 
             KeyCode::Enter => {
-                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on().clone() {
+                if let Some(FocusOn::Line(n, _)) = state.focus_on().clone() {
                     state.set_prompt_message(None);
                     match n {
                         0 => state.goto_users(),
@@ -108,7 +108,7 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
         Ok(())
     }
 
-    fn setup(&mut self, frame: &mut Frame) -> Result<()> {
+    fn layout(&mut self, frame: &mut Frame) -> Result<()> {
         self.chunks = Layout::default()
             .direction(Direction::Vertical)
             .flex(Flex::Center)
@@ -129,7 +129,12 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
         Ok(())
     }
 
-    fn handle_resize(&mut self, _: &mut Admin, _: (u16, u16)) -> Result<()> {
+    fn handle_resize(&mut self, _: &mut App, _: (u16, u16)) -> Result<()> {
+        Ok(())
+    }
+
+    fn setup(&mut self, app: &mut App) -> Result<()> {
+        app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
         Ok(())
     }
 }

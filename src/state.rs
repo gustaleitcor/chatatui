@@ -1,11 +1,12 @@
 use std::{
     io::Result,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use ratatui::crossterm::event::{self, Event};
 
-use crate::admin::{AdminCursorMode, AdminFocusOn};
+use crate::app::{CursorMode, FocusOn};
 
 pub enum CurrentScreen {
     Menu,
@@ -18,9 +19,11 @@ pub enum CurrentScreen {
 pub struct State {
     current_event: Arc<Mutex<Option<Event>>>,
     current_screen: CurrentScreen,
-    focus_on: Option<AdminFocusOn>,
-    cursor_mode: AdminCursorMode,
+    focus_on: Option<FocusOn>,
+    cursor_mode: CursorMode,
     error: Option<Result<String>>,
+    error_timestamp: Option<Instant>,
+    screen_has_changed: bool,
 }
 
 impl State {
@@ -28,9 +31,11 @@ impl State {
         State {
             current_event: Arc::new(Mutex::new(None)),
             current_screen: CurrentScreen::Menu,
-            cursor_mode: AdminCursorMode::View('x'),
+            cursor_mode: CursorMode::View('x'),
             focus_on: None,
             error: None,
+            screen_has_changed: true,
+            error_timestamp: None,
         }
     }
 
@@ -41,22 +46,35 @@ impl State {
 
     pub fn goto_exit(&mut self) {
         self.current_screen = CurrentScreen::Exit;
+        self.screen_has_changed = true;
     }
 
     pub fn goto_menu(&mut self) {
         self.current_screen = CurrentScreen::Menu;
+        self.screen_has_changed = true;
     }
 
     pub fn goto_users(&mut self) {
         self.current_screen = CurrentScreen::Users;
+        self.screen_has_changed = true;
     }
 
     pub fn goto_messages(&mut self) {
         self.current_screen = CurrentScreen::Messages;
+        self.screen_has_changed = true;
     }
 
     pub fn goto_chats(&mut self) {
         self.current_screen = CurrentScreen::Chats;
+        self.screen_has_changed = true;
+    }
+
+    pub fn has_screen_changed(&self) -> bool {
+        self.screen_has_changed
+    }
+
+    pub fn set_screen_has_changed(&mut self, value: bool) {
+        self.screen_has_changed = value;
     }
 
     pub fn has_exited(&self) -> bool {
@@ -81,24 +99,24 @@ impl State {
 
     pub fn toggle_cursor_mode(&mut self) {
         self.cursor_mode = match self.cursor_mode {
-            AdminCursorMode::View(_) => AdminCursorMode::Edit('x'),
-            AdminCursorMode::Edit(_) => AdminCursorMode::View('x'),
+            CursorMode::View(_) => CursorMode::Edit('x'),
+            CursorMode::Edit(_) => CursorMode::View('x'),
         };
     }
 
-    pub fn set_cursor_mode(&mut self, mode: AdminCursorMode) {
+    pub fn set_cursor_mode(&mut self, mode: CursorMode) {
         self.cursor_mode = mode;
     }
 
-    pub fn focus_on(&self) -> &Option<AdminFocusOn> {
+    pub fn focus_on(&self) -> &Option<FocusOn> {
         &self.focus_on
     }
 
-    pub fn set_focus_on(&mut self, focus_on: Option<AdminFocusOn>) {
+    pub fn set_focus_on(&mut self, focus_on: Option<FocusOn>) {
         self.focus_on = focus_on;
     }
 
-    pub fn cursor_mode(&self) -> &AdminCursorMode {
+    pub fn cursor_mode(&self) -> &CursorMode {
         &self.cursor_mode
     }
 
@@ -107,6 +125,15 @@ impl State {
     }
 
     pub fn set_prompt_message(&mut self, error: Option<Result<String>>) {
+        self.error_timestamp = Some(Instant::now());
         self.error = error;
+    }
+
+    pub fn clear_prompt_message(&mut self) {
+        self.error = None;
+    }
+
+    pub fn error_timestamp(&self) -> &Option<Instant> {
+        &self.error_timestamp
     }
 }

@@ -6,17 +6,24 @@ use ratatui::{
     Frame,
 };
 
-use crate::{admin::Admin, state::State};
+use crate::{app::App, state::State};
 
 pub trait Page<B: Backend> {
     fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()>;
-    fn setup(&mut self, frame: &mut Frame) -> Result<()>;
-    fn handle_input(&mut self, app: &mut Admin, key: &KeyEvent) -> Result<()>;
-    fn handle_resize(&mut self, app: &mut Admin, size: (u16, u16)) -> Result<()>;
+    fn layout(&mut self, frame: &mut Frame) -> Result<()>;
+    fn setup(&mut self, app: &mut App) -> Result<()>;
+    fn handle_input(&mut self, app: &mut App, key: &KeyEvent) -> Result<()>;
+    fn handle_resize(&mut self, app: &mut App, size: (u16, u16)) -> Result<()>;
     fn cleanup(&mut self) -> Result<()>;
 
-    fn run(&mut self, frame: &mut Frame, app: &mut Admin) -> Result<()> {
-        self.setup(frame)?;
+    fn run(&mut self, frame: &mut Frame, app: &mut App) -> Result<()> {
+        self.layout(frame)?;
+
+        if app.state().has_screen_changed() {
+            self.setup(app)?;
+            // TODO: This should not be here
+            app.state_mut().set_screen_has_changed(false);
+        }
 
         let current_event = app.state().take_current_event();
 
