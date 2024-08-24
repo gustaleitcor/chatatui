@@ -1,5 +1,7 @@
 use std::{
     io::{stdout, Result},
+    ptr::null,
+    rc::Rc,
     sync::{Arc, Mutex},
     thread::{self, sleep},
     time::Duration,
@@ -14,10 +16,14 @@ use ratatui::{
         ExecutableCommand,
     },
     prelude::Backend,
-    Terminal,
+    Frame, Terminal,
 };
 
-use crate::ui_admin::ui_admin;
+use crate::{
+    app,
+    pages::{menu::Menu, page::Page},
+    ui_admin::ui_admin,
+};
 pub enum AdminCursorMode {
     View(char),
     Edit(char),
@@ -36,12 +42,6 @@ pub enum AdminCurrentScreen {
 }
 
 pub struct Admin {
-    current_event: Arc<Mutex<Option<Event>>>,
-    current_screen: AdminCurrentScreen,
-    focus_on: Option<AdminFocusOn>,
-    cursor_mode: AdminCursorMode,
-    error: Option<Result<String>>,
-    pg_conn: PgConnection,
     db_cursor: i64,
     input: String,
     filter: Option<String>,
@@ -71,6 +71,9 @@ impl Admin {
                 username: String::new(),
                 password: String::new(),
             },
+            menu: Menu {
+                chunks: Rc::new([]),
+            },
         }
     }
 
@@ -92,7 +95,7 @@ impl Admin {
         thread::spawn({
             let current_event = self.current_event.clone();
             move || loop {
-                Admin::read_event(current_event.clone());
+                Admin::read_event(&current_event);
             }
         });
         loop {
@@ -116,7 +119,7 @@ impl Admin {
         Ok(())
     }
 
-    fn read_event(current_event: Arc<Mutex<Option<Event>>>) {
+    fn read_event(current_event: &Arc<Mutex<Option<Event>>>) {
         let event = event::read().unwrap();
         current_event.lock().unwrap().replace(event);
     }
@@ -137,12 +140,11 @@ impl Admin {
         self.cursor_mode = match self.cursor_mode {
             AdminCursorMode::View(_) => AdminCursorMode::Edit('x'),
             AdminCursorMode::Edit('c') => {
+                self.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
                 self.users_mut().pop();
                 AdminCursorMode::Edit('x')
             }
-            AdminCursorMode::Edit('u') => {
-                AdminCursorMode::Edit('x')
-            }
+            AdminCursorMode::Edit('u') => AdminCursorMode::Edit('x'),
             AdminCursorMode::Edit(_) => AdminCursorMode::View('x'),
         };
     }
@@ -177,6 +179,31 @@ impl Admin {
 
     pub fn set_pg_conn(&mut self, pg_conn: PgConnection) {
         self.pg_conn = pg_conn;
+    }
+
+    pub fn menu_run(&mut self, frame: &mut Frame) -> Result<()> {
+        // let menu = self.menu();
+
+        self.menu().setup(frame);
+
+        let current_event = self.take_current_event();
+
+        if let Some(Event::Key(key)) = current_event {
+            self.menu().handle_input(&key, self);
+        }
+
+        if let Some(Event::Resize(x, y)) = current_event {
+            self.menu().handle_resize((x, y))?;
+        }
+
+        self.menu().render(frame, self)?;
+
+        self.menu().cleanup()?;
+        Ok(())
+    }
+
+    pub fn menu(&mut self) -> &mut Menu {
+        &mut self.menu
     }
 
     pub fn input(&self) -> &String {

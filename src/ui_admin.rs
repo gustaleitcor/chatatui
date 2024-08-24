@@ -1,13 +1,14 @@
 use crud_bd::crud::user::User;
-// use diesel::result::Error;
 use ratatui::{
     crossterm::event::{Event, KeyCode},
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Flex, Layout},
     style::{Color, Style},
     text::Text,
     widgets::{Block, Borders, Cell, List, ListState, Paragraph, Row, Table, TableState},
     Frame,
 };
+
+use crate::pages::{menu::Menu, page::Page};
 
 use crate::admin::{Admin, AdminCurrentScreen, AdminCursorMode, AdminFocusOn};
 
@@ -21,99 +22,23 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
     }
 
     // renders the current screen
-    match *app.current_screen() {
+    match app.current_screen() {
         AdminCurrentScreen::Menu => {
+            app.menu().setup(f);
+
+            let current_event = app.take_current_event();
+
             if let Some(Event::Key(key)) = current_event {
-                match key.code {
-                    KeyCode::Char('q') => {
-                        app.set_current_screen(AdminCurrentScreen::Exit);
-                    }
-
-                    KeyCode::Down => {
-                        if let Some(AdminFocusOn::Line(n, _)) = app.focus_on() {
-                            app.set_focus_on(Some(AdminFocusOn::Line((n + 1) % 3, 1)));
-                        }
-                    }
-
-                    KeyCode::Up => {
-                        if let Some(AdminFocusOn::Line(n, _)) = app.focus_on() {
-                            if *n != 0 {
-                                app.set_focus_on(Some(AdminFocusOn::Line((n - 1) % 3, 1)));
-                            } else {
-                                app.set_focus_on(Some(AdminFocusOn::Line(2, 1)));
-                            }
-                        }
-                    }
-
-                    KeyCode::Enter => {
-                        if let Some(AdminFocusOn::Line(n, _)) = app.focus_on().clone() {
-                            app.set_prompt_message(None);
-                            match n {
-                                0 => {
-                                    app.set_db_cursor(0);
-                                    app.fetch_users(f.size().height.saturating_sub(7) as i64); // MAGIC NUMBER 7
-                                    app.set_current_screen(AdminCurrentScreen::Users);
-                                }
-                                1 => {
-                                    app.set_current_screen(AdminCurrentScreen::Messages);
-                                }
-                                2 => {
-                                    app.set_current_screen(AdminCurrentScreen::Chats);
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-
-                    _ => {}
-                }
+                self.handle_input(&key, app_state);
             }
 
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints(
-                    [
-                        Constraint::Length(2),
-                        Constraint::Fill(1),
-                        Constraint::Length(2),
-                    ]
-                    .as_ref(),
-                )
-                .split(f.size());
+            if let Some(Event::Resize(x, y)) = current_event {
+                self.handle_resize((x, y))?;
+            }
 
-            f.render_widget(
-                Paragraph::new("Menu")
-                    .alignment(Alignment::Center)
-                    .block(Block::default().borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)),
-                chunks[0],
-            );
+            self.render(frame, app_state)?;
 
-            f.render_stateful_widget(
-                List::new(["Users", "Messages", "Chats"])
-                    .scroll_padding(3)
-                    .highlight_symbol(" >> ")
-                    .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
-                chunks[1],
-                &mut ListState::default().with_selected(
-                    if let Some(AdminFocusOn::Line(n, _)) = app.focus_on() {
-                        Some(*n)
-                    } else {
-                        app.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
-                        Some(0)
-                    },
-                ),
-            );
-
-            f.render_widget(
-                Paragraph::new("Press 'q' to exit")
-                    .alignment(Alignment::Center)
-                    .block(
-                        Block::default()
-                            .borders(Borders::TOP)
-                            .title(app.cursor_mode().as_str()),
-                    ),
-                chunks[2],
-            );
+            self.cleanup()?;
         }
 
         AdminCurrentScreen::Users => {
@@ -130,11 +55,13 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                 )
                 .split(f.size());
 
+            let n_rows = chunks[1].height.saturating_sub(1) as i64;
+
             if let Some(Event::Resize(_, _)) = current_event {
                 if let AdminCursorMode::Edit('c') = app.cursor_mode() {
                     return;
                 } else {
-                    app.fetch_users(chunks[1].height.saturating_sub(1) as i64);
+                    app.fetch_users(n_rows);
                 }
 
                 if app.users().is_empty() {
@@ -177,9 +104,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                                     if *n < app.users().len() - 1 {
                                         app.set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
                                     } else {
-                                        app.next_users_page(
-                                            chunks[1].height.saturating_sub(1) as i64
-                                        );
+                                        app.next_users_page(n_rows);
                                         app.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
                                     }
                                 } else {
@@ -204,7 +129,6 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                             //         app.set_focus_on(None);
                             //     }
                             // }
-
                         }
 
                         KeyCode::Up => {
@@ -213,9 +137,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                                     if *n > 0 {
                                         app.set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
                                     } else {
-                                        app.prev_users_page(
-                                            chunks[1].height.saturating_sub(1) as i64
-                                        );
+                                        app.prev_users_page(n_rows);
                                         app.set_focus_on(Some(AdminFocusOn::Line(
                                             app.users().len() - 1,
                                             1,
@@ -286,9 +208,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                                     if *n < app.users().len() - 1 {
                                         app.set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
                                     } else {
-                                        app.next_users_page(
-                                            chunks[1].height.saturating_sub(1) as i64
-                                        );
+                                        app.next_users_page(n_rows);
                                         app.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
                                     }
                                 } else {
@@ -303,9 +223,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                                     if *n > 0 {
                                         app.set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
                                     } else {
-                                        app.prev_users_page(
-                                            chunks[1].height.saturating_sub(1) as i64
-                                        );
+                                        app.prev_users_page(n_rows);
                                         app.set_focus_on(Some(AdminFocusOn::Line(
                                             app.users().len() - 1,
                                             1,
@@ -340,9 +258,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                                                 ))),
 
                                                 Err(err) => {
-                                                    app.fetch_users(
-                                                        chunks[1].height.saturating_sub(1) as i64,
-                                                    );
+                                                    app.fetch_users(n_rows);
                                                     app.set_prompt_message(Some(Err(
                                                         std::io::Error::new(
                                                             std::io::ErrorKind::Other,
@@ -366,9 +282,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                                                 ))),
 
                                                 Err(err) => {
-                                                    app.fetch_users(
-                                                        chunks[1].height.saturating_sub(1) as i64,
-                                                    );
+                                                    app.fetch_users(n_rows);
 
                                                     app.set_prompt_message(Some(Err(
                                                         std::io::Error::new(
@@ -473,7 +387,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
 
                                         app.toggle_cursor_mode();
                                         app.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
-                                        app.fetch_users(chunks[1].height.saturating_sub(1) as i64);
+                                        app.fetch_users(n_rows);
                                         app.new_user_mut().username.clear();
                                         app.new_user_mut().password.clear();
                                     }
@@ -592,7 +506,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                         if i == *row {
                             let mut cells = vec![];
                             for (j, cell) in [
-                                "New User".to_string(),
+                                "New User:".to_string(),
                                 app.new_user().username.to_owned(),
                                 app.new_user().password.to_owned(),
                             ]
@@ -625,9 +539,9 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
                     rows,
                     [
                         // + 1 is for padding.
-                        Constraint::Length(8),
-                        Constraint::Max(25),
-                        Constraint::Max(25),
+                        Constraint::Length(9),
+                        Constraint::Max(32),
+                        Constraint::Max(32),
                     ],
                 )
                 .header(header)
