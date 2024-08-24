@@ -1,8 +1,6 @@
 mod admin;
-mod app;
 mod pages;
 mod state;
-mod ui;
 mod ui_admin;
 
 use admin::Admin;

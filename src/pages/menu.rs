@@ -11,7 +11,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::admin::{Admin, AdminCurrentScreen, AdminFocusOn};
+use crate::{admin::AdminFocusOn, state::State};
 
 use super::page::Page;
 
@@ -19,8 +19,16 @@ pub struct Menu {
     pub chunks: Rc<[Rect]>,
 }
 
+impl Menu {
+    pub fn new() -> Menu {
+        Menu {
+            chunks: Rc::new([]),
+        }
+    }
+}
+
 impl Page<CrosstermBackend<Stdout>> for Menu {
-    fn render(&self, frame: &mut Frame, app_state: &mut Admin) -> Result<()> {
+    fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()> {
         frame.render_widget(
             Paragraph::new("Menu")
                 .alignment(Alignment::Center)
@@ -35,10 +43,10 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
                 .block(Block::new().borders(Borders::LEFT | Borders::RIGHT)),
             self.chunks[1],
             &mut ListState::default().with_selected(
-                if let Some(AdminFocusOn::Line(n, _)) = app_state.focus_on() {
+                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on() {
                     Some(*n)
                 } else {
-                    app_state.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
+                    state.set_focus_on(Some(AdminFocusOn::Line(0, 1)));
                     Some(0)
                 },
             ),
@@ -50,7 +58,7 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
                 .block(
                     Block::default()
                         .borders(Borders::TOP)
-                        .title(app_state.cursor_mode().as_str()),
+                        .title(state.cursor_mode().as_str()),
                 ),
             self.chunks[2],
         );
@@ -58,41 +66,33 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
         Ok(())
     }
 
-    fn handle_input(&mut self, key: &KeyEvent, app_state: &mut Admin) -> Result<()> {
+    fn handle_input(&mut self, key: &KeyEvent, state: &mut State) -> Result<()> {
         match key.code {
-            KeyCode::Char('q') => {
-                app_state.set_current_screen(AdminCurrentScreen::Exit);
-            }
+            KeyCode::Char('q') => state.goto_exit(),
 
             KeyCode::Up => {
-                if let Some(AdminFocusOn::Line(n, _)) = app_state.focus_on() {
+                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on() {
                     if *n != 0 {
-                        app_state.set_focus_on(Some(AdminFocusOn::Line((n - 1) % 3, 1)));
+                        state.set_focus_on(Some(AdminFocusOn::Line((n - 1) % 3, 1)));
                     } else {
-                        app_state.set_focus_on(Some(AdminFocusOn::Line(2, 1)));
+                        state.set_focus_on(Some(AdminFocusOn::Line(2, 1)));
                     }
                 }
             }
 
             KeyCode::Down => {
-                if let Some(AdminFocusOn::Line(n, _)) = app_state.focus_on() {
-                    app_state.set_focus_on(Some(AdminFocusOn::Line((n + 1) % 3, 1)));
+                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on() {
+                    state.set_focus_on(Some(AdminFocusOn::Line((n + 1) % 3, 1)));
                 }
             }
 
             KeyCode::Enter => {
-                if let Some(AdminFocusOn::Line(n, _)) = app_state.focus_on().clone() {
-                    app_state.set_prompt_message(None);
+                if let Some(AdminFocusOn::Line(n, _)) = state.focus_on().clone() {
+                    state.set_prompt_message(None);
                     match n {
-                        0 => {
-                            app_state.set_current_screen(AdminCurrentScreen::Users);
-                        }
-                        1 => {
-                            app_state.set_current_screen(AdminCurrentScreen::Messages);
-                        }
-                        2 => {
-                            app_state.set_current_screen(AdminCurrentScreen::Chats);
-                        }
+                        0 => state.goto_users(),
+                        1 => state.goto_messages(),
+                        2 => state.goto_chats(),
                         _ => {}
                     }
                 }
