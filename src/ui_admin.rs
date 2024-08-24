@@ -23,23 +23,7 @@ pub fn ui_admin(f: &mut Frame, app: &mut Admin) {
 
     // renders the current screen
     match app.current_screen() {
-        AdminCurrentScreen::Menu => {
-            app.menu().setup(f);
-
-            let current_event = app.take_current_event();
-
-            if let Some(Event::Key(key)) = current_event {
-                self.handle_input(&key, app_state);
-            }
-
-            if let Some(Event::Resize(x, y)) = current_event {
-                self.handle_resize((x, y))?;
-            }
-
-            self.render(frame, app_state)?;
-
-            self.cleanup()?;
-        }
+        AdminCurrentScreen::Menu => {}
 
         AdminCurrentScreen::Users => {
             let chunks = Layout::default()

@@ -43,7 +43,6 @@ pub enum AdminCurrentScreen {
 
 pub struct Admin {
     db_cursor: i64,
-    input: String,
     filter: Option<String>,
     users: Vec<User>,
     new_user: User,
@@ -204,14 +203,6 @@ impl Admin {
 
     pub fn menu(&mut self) -> &mut Menu {
         &mut self.menu
-    }
-
-    pub fn input(&self) -> &String {
-        &self.input
-    }
-
-    pub fn set_input(&mut self, input: String) {
-        self.input = input;
     }
 
     pub fn filter(&self) -> &Option<String> {
