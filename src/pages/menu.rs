@@ -120,7 +120,7 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
                 ]
                 .as_ref(),
             )
-            .split(frame.size());
+            .split(frame.area());
 
         Ok(())
     }

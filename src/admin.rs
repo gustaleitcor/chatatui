@@ -1,27 +1,22 @@
 use std::{
     io::{stdout, Result},
-    ptr::null,
-    rc::Rc,
-    sync::{Arc, Mutex},
     thread::{self, sleep},
     time::Duration,
 };
 
-use crud_bd::crud::{chat::Chat, establish_connection, message::Message, user::User};
-use diesel::PgConnection;
 use ratatui::{
     crossterm::{
-        event::{self, DisableMouseCapture, EnableMouseCapture, Event},
+        event::{DisableMouseCapture, EnableMouseCapture},
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,
     },
     prelude::Backend,
-    Frame, Terminal,
+    Terminal,
 };
 
 use crate::{
     database::Database,
-    pages::{menu::Menu, page::Page, users::Users},
+    pages::{menu::Menu, users::Users},
     state::State,
     ui_admin::ui_admin,
 };

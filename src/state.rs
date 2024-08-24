@@ -3,8 +3,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crud_bd::crud::establish_connection;
-use diesel::PgConnection;
 use ratatui::crossterm::event::{self, Event};
 
 use crate::admin::{AdminCursorMode, AdminFocusOn};

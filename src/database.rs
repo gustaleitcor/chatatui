@@ -12,6 +12,22 @@ impl Database {
         }
     }
 
+    pub fn create_user(&mut self, user_username: &str, user_password: &str) -> QueryResult<User> {
+        crud_bd::crud::user::create_user(&mut self.pg_conn, user_username, user_password)
+    }
+
+    pub fn delete_user(&mut self, user_id: i32) -> QueryResult<User> {
+        crud_bd::crud::user::delete_user(&mut self.pg_conn, user_id)
+    }
+
+    pub fn update_username(&mut self, user_id: i32, new_username: &str) -> QueryResult<User> {
+        crud_bd::crud::user::update_user_username(&mut self.pg_conn, user_id, new_username)
+    }
+
+    pub fn update_password(&mut self, user_id: i32, new_password: &str) -> QueryResult<User> {
+        crud_bd::crud::user::update_user_password(&mut self.pg_conn, user_id, new_password)
+    }
+
     pub fn fetch_users(
         &mut self,
         limit: i64,
@@ -42,7 +58,7 @@ impl Database {
         limit: i64,
         db_cursor: &mut i64,
         filter: Option<String>,
-) -> QueryResult<Vec<User>> {
+    ) -> QueryResult<Vec<User>> {
         if *db_cursor - limit < 0 {
             *db_cursor = 0;
         } else {
@@ -58,30 +74,4 @@ impl Database {
         }
         Ok(users)
     }
-    // pub fn fetch_users(&mut self, limit: i64, cursor: i64, filter: Option<String>) -> Vec<User> {
-    //     match crud_bd::crud::user::get_users_with_pagination(
-    //         &mut self.pg_conn,
-    //         cursor,
-    //         limit,
-    //         filter,
-    //     ) {
-    //         Ok(users) => {
-    //             if users.is_empty() {
-    //                 return 0;
-    //             }
-    //             users
-    //         }
-    //         Err(err) => {
-    //             self.set_prompt_message(Some(Err(std::io::Error::new(
-    //                 std::io::ErrorKind::Other,
-    //                 format!("Failed to fetch user. {:?}", err.to_string()),
-    //             ))));
-
-    //             self.set_db_cursor(0);
-    //             Vec::new()
-    //         }
-    //     };
-
-    //     self.users.len()
-    // }
 }

@@ -4,7 +4,6 @@ use std::{
 };
 
 use crud_bd::crud::user::User;
-use diesel::QueryResult;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -17,7 +16,6 @@ use ratatui::{
 
 use crate::{
     admin::{Admin, AdminCursorMode, AdminFocusOn},
-    database::Database,
     state::State,
 };
 
@@ -47,7 +45,6 @@ impl Users {
             available_rows: 0,
         }
     }
-
 }
 
 impl Page<CrosstermBackend<Stdout>> for Users {
@@ -240,7 +237,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 ]
                 .as_ref(),
             )
-            .split(frame.size());
+            .split(frame.area());
 
         self.available_rows = self.chunks[1].height.saturating_sub(1) as i64;
 
@@ -261,11 +258,19 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                     if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n < self.users.len() - 1 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
                             } else {
                                 // TODO: This is disgusting
                                 app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
-                                self.users = app.database().next_users_page(self.available_rows,&mut self.db_cursor, self.filter.clone()).unwrap();
+                                self.users = app
+                                    .database()
+                                    .next_users_page(
+                                        self.available_rows,
+                                        &mut self.db_cursor,
+                                        self.filter.clone(),
+                                    )
+                                    .unwrap();
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
@@ -295,9 +300,17 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                     if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n > 0 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
                             } else {
-                                self.users = app.database().prev_users_page(self.available_rows,&mut self.db_cursor, self.filter.clone()).unwrap();
+                                self.users = app
+                                    .database()
+                                    .prev_users_page(
+                                        self.available_rows,
+                                        &mut self.db_cursor,
+                                        self.filter.clone(),
+                                    )
+                                    .unwrap();
                                 app.state_mut().set_focus_on(Some(AdminFocusOn::Line(
                                     self.users.len() - 1,
                                     1,
@@ -319,24 +332,24 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         if !self.users.is_empty() {
                             let user = self.users.get(n).unwrap();
                             let user_id = user.id.to_owned();
-                            // TODO: create database function
-                            // match crud_bd::crud::user::delete_user(app.pg_conn(), user_id) {
-                            //     Ok(_) => {
-                            //         self.users.remove(n);
-                            //         app.state().set_focus_on(Some(AdminFocusOn::Line(
-                            //             n.saturating_sub(1),
-                            //             1,
-                            //         )));
-                            //         app.state().set_prompt_message(Some(Ok("User deleted".to_string())))
-                            //     }
-                            //
-                            //     Err(err) => {
-                            //         app.state().set_prompt_message(Some(Err(std::io::Error::new(
-                            //             std::io::ErrorKind::Other,
-                            //             format!("Failed to delete user. {:?}", err),
-                            //         ))))
-                            //     }
-                            // }
+                            match app.database().delete_user(user_id) {
+                                Ok(_) => {
+                                    self.users.remove(n);
+                                    app.state_mut().set_focus_on(Some(AdminFocusOn::Line(
+                                        n.saturating_sub(1),
+                                        1,
+                                    )));
+                                    app.state_mut()
+                                        .set_prompt_message(Some(Ok("User deleted".to_string())))
+                                }
+
+                                Err(err) => app.state_mut().set_prompt_message(Some(Err(
+                                    std::io::Error::new(
+                                        std::io::ErrorKind::Other,
+                                        format!("Failed to delete user. {:?}", err),
+                                    ),
+                                ))),
+                            }
                         }
                     }
                 }
@@ -358,17 +371,26 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         username: "".to_string(),
                         password: "".to_string(),
                     });
-                    app.state_mut().set_focus_on(Some(AdminFocusOn::Line(self.users.len() - 1, 1)));
+                    app.state_mut()
+                        .set_focus_on(Some(AdminFocusOn::Line(self.users.len() - 1, 1)));
                 }
 
                 KeyCode::Down => {
                     if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n < self.users.len() - 1 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(n + 1, 1)));
                             } else {
-                                // TODO: create this func
-                                // self.next_users_page(n_rows);
+                                // TODO: handle error
+                                self.users = app
+                                    .database()
+                                    .next_users_page(
+                                        self.available_rows,
+                                        &mut self.db_cursor,
+                                        self.filter.clone(),
+                                    )
+                                    .unwrap();
                                 app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
                             }
                         } else {
@@ -381,10 +403,18 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                     if let Some(AdminFocusOn::Line(n, _)) = app.state().focus_on().clone() {
                         if !self.users.is_empty() {
                             if n > 0 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(n - 1, 1)));
                             } else {
-                                // TODO: create this func
-                                // app.prev_users_page(n_rows);
+                                // TODO: handle error
+                                self.users = app
+                                    .database()
+                                    .prev_users_page(
+                                        self.available_rows,
+                                        &mut self.db_cursor,
+                                        self.filter.clone(),
+                                    )
+                                    .unwrap();
                                 app.state_mut().set_focus_on(Some(AdminFocusOn::Line(
                                     self.users.len() - 1,
                                     1,
@@ -408,48 +438,63 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                 let user_name = &user.username.to_owned();
                                 let user_password = &user.password.to_owned();
 
-                                // TODO: create this database func
-                                // match crud_bd::crud::user::update_user_username(
-                                //     app.pg_conn(),
-                                //     *user_id,
-                                //     user_name,
-                                // ) {
-                                //     Ok(_) => app.state()
-                                //         .set_prompt_message(Some(Ok("User created".to_string()))),
-                                //     Err(err) => {
-                                //         app.fetch_users(n_rows);
-                                //         app.state().set_prompt_message(Some(Err(std::io::Error::new(
-                                //             std::io::ErrorKind::Other,
-                                //             format!(
-                                //                 "Failed to create user username. {:?}",
-                                //                 err.to_string()
-                                //             ),
-                                //         ))));
-                                //         return;
-                                //     }
-                                // }
+                                // TODO: handle error
+                                match app.database().update_username(*user_id, user_name) {
+                                    Ok(_) => app
+                                        .state_mut()
+                                        .set_prompt_message(Some(Ok("User created".to_string()))),
+                                    Err(err) => {
+                                        self.users = app
+                                            .database()
+                                            .fetch_users(
+                                                self.available_rows,
+                                                self.db_cursor,
+                                                self.filter.clone(),
+                                            )
+                                            .unwrap();
+                                        app.state_mut().set_prompt_message(Some(Err(
+                                            std::io::Error::new(
+                                                std::io::ErrorKind::Other,
+                                                format!(
+                                                    "Failed to create user username. {:?}",
+                                                    err.to_string()
+                                                ),
+                                            ),
+                                        )));
+                                    }
+                                }
 
-                                // TODO: create this func:
-                                // match crud_bd::crud::user::update_user_password(
-                                //     app.pg_conn(),
-                                //     *user_id,
-                                //     user_password.as_str(),
-                                // ) {
-                                //     Ok(_) => app.state()
-                                //         .set_prompt_message(Some(Ok("User updated".to_string()))),
-                                //     Err(err) => {
-                                //         app.fetch_users(n_rows);
-                                //         app.state().set_prompt_message(Some(Err(std::io::Error::new(
-                                //             std::io::ErrorKind::Other,
-                                //             format!("Failed to update user password. {:?}", err,),
-                                //         ))));
-                                //         return;
-                                //     }
-                                // }
+                                // TODO: handle errors:
+                                match app.database().update_password(*user_id, user_password) {
+                                    Ok(_) => app
+                                        .state_mut()
+                                        .set_prompt_message(Some(Ok("User updated".to_string()))),
+                                    Err(err) => {
+                                        self.users = app
+                                            .database()
+                                            .fetch_users(
+                                                self.available_rows,
+                                                self.db_cursor,
+                                                self.filter.clone(),
+                                            )
+                                            .unwrap();
+                                        app.state_mut().set_prompt_message(Some(Err(
+                                            std::io::Error::new(
+                                                std::io::ErrorKind::Other,
+                                                format!(
+                                                    "Failed to update user password. {:?}",
+                                                    err,
+                                                ),
+                                            ),
+                                        )));
+                                        // return;
+                                    }
+                                }
                             }
 
                             app.state_mut().toggle_cursor_mode();
-                            app.state_mut().set_focus_on(Some(AdminFocusOn::Line(row, 1)));
+                            app.state_mut()
+                                .set_focus_on(Some(AdminFocusOn::Line(row, 1)));
                         }
 
                         KeyCode::Char(c) => {
@@ -486,13 +531,15 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
                         KeyCode::Left => {
                             if col > 1 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(row, col - 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(row, col - 1)));
                             }
                         }
 
                         KeyCode::Right => {
                             if col < 2 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(row, col + 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(row, col + 1)));
                             }
                         }
 
@@ -501,6 +548,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 }
             }
 
+            //BUG: this doest work, could be related to render
             AdminCursorMode::Edit('c') => {
                 if let Some(AdminFocusOn::Line(row, col)) = app.state().focus_on().clone() {
                     match key.code {
@@ -508,23 +556,19 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                             let username = self.new_user.username.clone();
                             let password = self.new_user.password.clone();
 
-                            // TODO: make this func
-                            // match crud_bd::crud::user::create_user(
-                            //     app.pg_conn(),
-                            //     username.as_str(),
-                            //     password.as_str(),
-                            // ) {
-                            //     Ok(_) => {
-                            //         app.state().set_prompt_message(Some(Ok("User created".to_string())));
-                            //     }
-                            //
-                            //     Err(err) => {
-                            //         app.state().set_prompt_message(Some(Err(std::io::Error::new(
-                            //             std::io::ErrorKind::Other,
-                            //             format!("Failed to create user. {:?}", err),
-                            //         ))))
-                            //     }
-                            // }
+                            // TODO: handle errors
+                            match app.database().create_user(username.as_str(), password.as_str()) {
+                                Ok(_) => {
+                                    app.state_mut().set_prompt_message(Some(Ok("User created".to_string())));
+                                }
+
+                                Err(err) => {
+                                    app.state_mut().set_prompt_message(Some(Err(std::io::Error::new(
+                                        std::io::ErrorKind::Other,
+                                        format!("Failed to create user. {:?}", err),
+                                    ))))
+                                }
+                            }
 
                             app.state_mut().toggle_cursor_mode();
                             app.state_mut().set_focus_on(Some(AdminFocusOn::Line(0, 1)));
@@ -567,13 +611,15 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
                         KeyCode::Left => {
                             if col > 1 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(row, col - 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(row, col - 1)));
                             }
                         }
 
                         KeyCode::Right => {
                             if col < 2 {
-                                app.state_mut().set_focus_on(Some(AdminFocusOn::Line(row, col + 1)));
+                                app.state_mut()
+                                    .set_focus_on(Some(AdminFocusOn::Line(row, col + 1)));
                             }
                         }
 
