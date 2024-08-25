@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use crud_bd::crud::user::User;
+use crud_bd::crud::user::Chat;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -21,13 +21,17 @@ use crate::{
 
 use super::page::Page;
 
+struct Filter {
+    id: String,
+    username: String,
+}
+
 pub struct Users {
     chunks: Rc<[Rect]>,
     db_cursor: i64,
-    filter: Option<String>,
-    users: Vec<User>,
-    new_user: User,
-    filter_user: User,
+    users: Vec<Chat>,
+    new_user: Chat,
+    filter: Filter,
     available_rows: i64,
 }
 
@@ -36,17 +40,15 @@ impl Users {
         Self {
             chunks: Rc::new([Rect::default()]),
             db_cursor: 0,
-            filter: None,
             users: Vec::new(),
-            new_user: User {
+            new_user: Chat {
                 id: -1,
                 username: String::new(),
                 password: String::new(),
             },
-            filter_user: User {
-                id: -1,
+            filter: Filter {
+                id: String::new(),
                 username: String::new(),
-                password: String::new(),
             },
             available_rows: 0,
         }
@@ -83,39 +85,43 @@ impl Page<CrosstermBackend<Stdout>> for Users {
         );
 
         // Renders the filter input.
-
-        let v = [User {
-            id: self.filter_user.id,
-            username: self.filter_user.username.to_owned(),
-            password: self.filter_user.password.to_owned(),
+        //
+        let filter_clone = [Filter {
+            id: self.filter.id.to_owned(),
+            username: self.filter.username.to_owned(),
         }];
 
-        let selected_style = Style::default().fg(Color::Green).bg(Color::LightBlue);
-
-        let filter_row = v.iter().enumerate().map(|(_, data)| {
-            let mut id = Cell::from(Text::from(format!("{}", data.id)));
-            let mut username = Cell::from(Text::from(data.username.to_owned()));
-            let mut password = Cell::from(Text::from(data.password.to_owned()));
-
-            if let Some(FocusOn::Filter(n)) = state.focus_on() {
-                if *n == 0 {
-                    id = id.style(selected_style);
-                } else if *n == 1 {
-                    username = username.style(selected_style);
-                } else {
-                    password = password.style(selected_style);
+        let row = filter_clone.iter().map(|data| {
+            if let CursorMode::View('f') = state.cursor_mode() {
+                if let Some(FocusOn::Filter(col)) = state.focus_on() {
+                    let mut cells = vec![];
+                    for (j, cell) in [data.id.to_owned(), data.username.to_owned()]
+                        .iter()
+                        .enumerate()
+                    {
+                        let cell = Cell::from(cell.to_string()).style(if j == *col {
+                            Style::default().fg(Color::Black).bg(Color::White)
+                        } else {
+                            Style::default()
+                        });
+                        cells.push(cell);
+                    }
+                    return Row::new(cells).height(1);
                 }
             }
-            [id, username, password].into_iter().collect::<Row>()
+            Row::new(vec![
+                Cell::from(data.id.to_owned()),
+                Cell::from(data.username.to_owned()),
+            ])
+            .height(1)
         });
 
         frame.render_widget(
             Table::new(
-                filter_row,
+                row,
                 [
                     // + 1 is for padding.
                     Constraint::Length(9),
-                    Constraint::Max(32),
                     Constraint::Max(32),
                 ],
             )
@@ -302,7 +308,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                     .next_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        Some(self.filter_user.username.to_owned()),
+                                        Some(self.filter.username.clone()),
+                                        Some(self.filter.id.clone()),
                                     )
                                     .unwrap();
 
@@ -322,21 +329,20 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         if !self.users.is_empty() {
                             if n > 0 {
                                 app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
-                            } else {
+                            } else if !(self.db_cursor == 0 && n == 0) {
                                 let users = app
                                     .database()
                                     .prev_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        Some(self.filter_user.username.to_owned()),
+                                        Some(self.filter.username.clone()),
+                                        Some(self.filter.id.clone()),
                                     )
                                     .unwrap();
 
-                                if !self.db_cursor != 0 && n != 0 {
-                                    self.users = users;
-                                    app.state_mut()
-                                        .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
-                                }
+                                self.users = users;
+                                app.state_mut()
+                                    .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
@@ -358,15 +364,11 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         KeyCode::Char(c) => {
                             match n {
                                 0 => {
-                                    // self.filter_user.id.push(c);
+                                    self.filter.id.push(c);
                                 }
 
                                 1 => {
-                                    self.filter_user.username.push(c);
-                                }
-
-                                2 => {
-                                    self.filter_user.password.push(c);
+                                    self.filter.username.push(c);
                                 }
 
                                 _ => {}
@@ -379,7 +381,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                 .fetch_users(
                                     self.available_rows,
                                     self.db_cursor,
-                                    Some(self.filter_user.username.clone()),
+                                    Some(self.filter.username.clone()),
+                                    Some(self.filter.id.clone()),
                                 )
                                 .unwrap();
                         }
@@ -387,15 +390,11 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         KeyCode::Backspace => {
                             match n {
                                 0 => {
-                                    // self.filter_user.id.pop();
+                                    self.filter.id.pop();
                                 }
 
                                 1 => {
-                                    self.filter_user.username.pop();
-                                }
-
-                                2 => {
-                                    self.filter_user.password.pop();
+                                    self.filter.username.pop();
                                 }
 
                                 _ => {}
@@ -408,13 +407,14 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                 .fetch_users(
                                     self.available_rows,
                                     self.db_cursor,
-                                    Some(self.filter_user.username.clone()),
+                                    Some(self.filter.username.clone()),
+                                    Some(self.filter.id.clone()),
                                 )
                                 .unwrap();
                         }
 
                         KeyCode::Right => {
-                            if n < 2 {
+                            if n < 1 {
                                 app.state_mut().set_focus_on(Some(FocusOn::Filter(n + 1)));
                             }
                         }
@@ -453,7 +453,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                     .next_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        Some(self.new_user.username.to_owned()),
+                                        Some(self.filter.username.clone()),
+                                        Some(self.filter.id.clone()),
                                     )
                                     .unwrap();
 
@@ -479,7 +480,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                     .prev_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        Some(self.filter_user.username.to_owned()),
+                                        Some(self.filter.username.clone()),
+                                        Some(self.filter.id.clone()),
                                     )
                                     .unwrap();
 
@@ -517,7 +519,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
                 KeyCode::Char('c') => {
                     app.state_mut().set_cursor_mode(CursorMode::Edit('c'));
-                    self.users.push(User {
+                    self.users.push(Chat {
                         id: -1,
                         username: "".to_string(),
                         password: "".to_string(),
@@ -543,7 +545,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                         .fetch_users(
                                             self.available_rows,
                                             self.db_cursor,
-                                            self.filter.clone(),
+                                            Some(self.filter.username.clone()),
+                                            Some(self.filter.id.clone()),
                                         )
                                         .unwrap();
                                     app.state_mut()
@@ -586,7 +589,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                             .fetch_users(
                                                 self.available_rows,
                                                 self.db_cursor,
-                                                self.filter.clone(),
+                                                Some(self.filter.username.clone()),
+                                                Some(self.filter.id.clone()),
                                             )
                                             .unwrap();
                                         app.state_mut().set_prompt_message(Some(Err(
@@ -612,7 +616,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                             .fetch_users(
                                                 self.available_rows,
                                                 self.db_cursor,
-                                                self.filter.clone(),
+                                                Some(self.filter.username.clone()),
+                                                Some(self.filter.id.clone()),
                                             )
                                             .unwrap();
                                         app.state_mut().set_prompt_message(Some(Err(
@@ -714,7 +719,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                 .fetch_users(
                                     self.available_rows,
                                     self.db_cursor,
-                                    self.filter.clone(),
+                                    Some(self.filter.username.clone()),
+                                    Some(self.filter.id.clone()),
                                 )
                                 .unwrap();
                             self.new_user.username.clear();
@@ -776,7 +782,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
         self.users = match app.database().fetch_users(
             self.available_rows,
             self.db_cursor,
-            Some(self.filter_user.username.to_owned()),
+            Some(self.filter.username.to_owned()),
+            Some(self.filter.id.to_owned()),
         ) {
             Ok(users) => users,
             Err(err) => {
@@ -817,7 +824,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
         self.users = match app.database().fetch_users(
             self.available_rows,
             self.db_cursor,
-            self.filter.clone(),
+            Some(self.filter.username.clone()),
+            Some(self.filter.id.clone()),
         ) {
             Ok(users) => users,
             Err(err) => {
