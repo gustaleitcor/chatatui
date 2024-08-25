@@ -32,9 +32,30 @@ impl Database {
         &mut self,
         limit: i64,
         cursor: i64,
-        filter: Option<String>,
+        username_filter: Option<String>,
+        id_filter: Option<String>,
     ) -> QueryResult<Vec<User>> {
-        crud_bd::crud::user::get_users_with_pagination(&mut self.pg_conn, cursor, limit, filter)
+        let id_filter = id_filter
+            .map(|e| {
+                if e.is_empty() {
+                    None
+                } else {
+                    Some(match e.parse::<i32>() {
+                        Ok(e) => Some(e),
+                        Err(_) => None,
+                    })
+                }
+            })
+            .flatten()
+            .flatten();
+
+        crud_bd::crud::user::get_users_with_pagination(
+            &mut self.pg_conn,
+            cursor,
+            limit,
+            username_filter,
+            id_filter,
+        )
     }
 
     // TODO: Remove cursor changes from here change the cursor
@@ -42,11 +63,12 @@ impl Database {
         &mut self,
         limit: i64,
         db_cursor: &mut i64,
-        filter: Option<String>,
+        username_filter: Option<String>,
+        id_filter: Option<String>,
     ) -> QueryResult<Vec<User>> {
         *db_cursor = db_cursor.saturating_add(limit);
 
-        let users = self.fetch_users(limit, *db_cursor, filter)?;
+        let users = self.fetch_users(limit, *db_cursor, username_filter, id_filter)?;
 
         *db_cursor = *db_cursor + users.len() as i64 - limit;
 
@@ -57,7 +79,8 @@ impl Database {
         &mut self,
         limit: i64,
         db_cursor: &mut i64,
-        filter: Option<String>,
+        username_filter: Option<String>,
+        id_filter: Option<String>,
     ) -> QueryResult<Vec<User>> {
         if *db_cursor - limit < 0 {
             *db_cursor = 0;
@@ -65,7 +88,7 @@ impl Database {
             *db_cursor -= limit;
         }
 
-        let users = self.fetch_users(limit, *db_cursor, filter)?;
+        let users = self.fetch_users(limit, *db_cursor, username_filter, id_filter)?;
 
         if *db_cursor - limit < 0 {
             *db_cursor = 0;

@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use crud_bd::crud::user::Chat;
+use crud_bd::crud::user::User;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -29,8 +29,8 @@ struct Filter {
 pub struct Users {
     chunks: Rc<[Rect]>,
     db_cursor: i64,
-    users: Vec<Chat>,
-    new_user: Chat,
+    users: Vec<User>,
+    new_user: User,
     filter: Filter,
     available_rows: i64,
 }
@@ -41,7 +41,7 @@ impl Users {
             chunks: Rc::new([Rect::default()]),
             db_cursor: 0,
             users: Vec::new(),
-            new_user: Chat {
+            new_user: User {
                 id: -1,
                 username: String::new(),
                 password: String::new(),
@@ -519,7 +519,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
 
                 KeyCode::Char('c') => {
                     app.state_mut().set_cursor_mode(CursorMode::Edit('c'));
-                    self.users.push(Chat {
+                    self.users.push(User {
                         id: -1,
                         username: "".to_string(),
                         password: "".to_string(),
