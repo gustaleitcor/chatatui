@@ -27,6 +27,7 @@ pub struct Users {
     filter: Option<String>,
     users: Vec<User>,
     new_user: User,
+    filter_user: User,
     available_rows: i64,
 }
 
@@ -42,6 +43,11 @@ impl Users {
                 username: String::new(),
                 password: String::new(),
             },
+            filter_user: User {
+                id: -1,
+                username: String::new(),
+                password: String::new(),
+            },
             available_rows: 0,
         }
     }
@@ -49,6 +55,7 @@ impl Users {
 
 impl Page<CrosstermBackend<Stdout>> for Users {
     fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()> {
+        // Renders header and debug info.
         let mut debug_row: usize = 0;
         let mut debug_col: usize = 0;
         if let Some(FocusOn::Line(row, col)) = state.focus_on().clone() {
@@ -60,7 +67,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 Block::default()
                     .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
                     .title(format!(
-                        "db_cursor: {} | Page: {} | Userslen: {} | TableHeight: {} | Row: {} | Column: {}",
+                        "db_cursor: {} | Page: {} | Userslen: {} | TableHeight: {} | Row: {} | Column: {} | AvailableRows: {}",
                         self.db_cursor,
                         self.db_cursor
                             .checked_div(self.chunks[1].as_size().height.saturating_sub(1) as i64)
@@ -68,11 +75,55 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         self.users.len(),
                         self.chunks[1].as_size().height,
                         debug_row,
-                        debug_col
+                        debug_col,
+                        self.available_rows
                     )),
             ),
             self.chunks[0],
         );
+
+        // Renders the filter input.
+
+        let v = [User {
+            id: self.filter_user.id,
+            username: self.filter_user.username.to_owned(),
+            password: self.filter_user.password.to_owned(),
+        }];
+
+        let selected_style = Style::default().fg(Color::Green).bg(Color::LightBlue);
+
+        let filter_row = v.iter().enumerate().map(|(_, data)| {
+            let mut id = Cell::from(Text::from(format!("{}", data.id)));
+            let mut username = Cell::from(Text::from(data.username.to_owned()));
+            let mut password = Cell::from(Text::from(data.password.to_owned()));
+
+            if let Some(FocusOn::Filter(n)) = state.focus_on() {
+                if *n == 0 {
+                    id = id.style(selected_style);
+                } else if *n == 1 {
+                    username = username.style(selected_style);
+                } else {
+                    password = password.style(selected_style);
+                }
+            }
+            [id, username, password].into_iter().collect::<Row>()
+        });
+
+        frame.render_widget(
+            Table::new(
+                filter_row,
+                [
+                    // + 1 is for padding.
+                    Constraint::Length(9),
+                    Constraint::Max(32),
+                    Constraint::Max(32),
+                ],
+            )
+            .block(Block::default().borders(Borders::LEFT | Borders::RIGHT)),
+            self.chunks[1],
+        );
+
+        // Renders the table.
 
         let header = ["Id", "Name", "Pwd"]
             .into_iter()
@@ -154,7 +205,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             .header(header)
             .highlight_symbol(" >> ")
             .block(Block::default().borders(Borders::LEFT | Borders::RIGHT)),
-            self.chunks[1],
+            self.chunks[2],
             &mut TableState::new().with_selected(
                 if let Some(FocusOn::Line(n, _)) = state.focus_on() {
                     Some(*n)
@@ -169,7 +220,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                 Paragraph::new(msg.to_owned())
                     .alignment(Alignment::Center)
                     .block(Block::default().borders(Borders::LEFT | Borders::RIGHT)),
-                self.chunks[2],
+                self.chunks[3],
             );
         } else if let Some(Err(msg)) = state.prompt_message() {
             frame.render_widget(
@@ -181,12 +232,12 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                             .borders(Borders::LEFT | Borders::RIGHT)
                             .style(Style::default().fg(Color::White)),
                     ),
-                self.chunks[2],
+                self.chunks[3],
             );
         } else {
             frame.render_widget(
                 Block::default().borders(Borders::LEFT | Borders::RIGHT),
-                self.chunks[2],
+                self.chunks[3],
             );
         };
 
@@ -208,7 +259,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             Paragraph::new(guide_content)
                 .alignment(guide_align)
                 .block(guide_block),
-            self.chunks[3],
+            self.chunks[4],
         );
 
         Ok(())
@@ -219,6 +270,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             .constraints(
                 [
                     Constraint::Length(2),
+                    Constraint::Length(1),
                     Constraint::Fill(1),
                     Constraint::Length(2),
                     Constraint::Length(2),
@@ -227,7 +279,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             )
             .split(frame.size());
 
-        self.available_rows = self.chunks[1].height.saturating_sub(1) as i64;
+        self.available_rows = self.chunks[2].height.saturating_sub(1) as i64;
 
         Ok(())
     }
@@ -250,7 +302,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                     .next_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        self.filter.clone(),
+                                        Some(self.filter_user.username.to_owned()),
                                     )
                                     .unwrap();
 
@@ -276,7 +328,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                     .prev_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        self.filter.clone(),
+                                        Some(self.filter_user.username.to_owned()),
                                     )
                                     .unwrap();
 
@@ -292,10 +344,96 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                     }
                 }
 
-                KeyCode::Char('f') => todo!(""),
+                KeyCode::Char('f') => {
+                    app.state_mut().set_focus_on(Some(FocusOn::Filter(0)));
+                    app.state_mut().set_cursor_mode(CursorMode::View('f'));
+                }
 
                 _ => {}
             },
+
+            CursorMode::View('f') => {
+                if let Some(FocusOn::Filter(n)) = app.state().focus_on().clone() {
+                    match key.code {
+                        KeyCode::Char(c) => {
+                            match n {
+                                0 => {
+                                    // self.filter_user.id.push(c);
+                                }
+
+                                1 => {
+                                    self.filter_user.username.push(c);
+                                }
+
+                                2 => {
+                                    self.filter_user.password.push(c);
+                                }
+
+                                _ => {}
+                            }
+
+                            self.db_cursor = 0;
+
+                            self.users = app
+                                .database()
+                                .fetch_users(
+                                    self.available_rows,
+                                    self.db_cursor,
+                                    Some(self.filter_user.username.clone()),
+                                )
+                                .unwrap();
+                        }
+
+                        KeyCode::Backspace => {
+                            match n {
+                                0 => {
+                                    // self.filter_user.id.pop();
+                                }
+
+                                1 => {
+                                    self.filter_user.username.pop();
+                                }
+
+                                2 => {
+                                    self.filter_user.password.pop();
+                                }
+
+                                _ => {}
+                            }
+
+                            self.db_cursor = 0;
+
+                            self.users = app
+                                .database()
+                                .fetch_users(
+                                    self.available_rows,
+                                    self.db_cursor,
+                                    Some(self.filter_user.username.clone()),
+                                )
+                                .unwrap();
+                        }
+
+                        KeyCode::Right => {
+                            if n < 2 {
+                                app.state_mut().set_focus_on(Some(FocusOn::Filter(n + 1)));
+                            }
+                        }
+
+                        KeyCode::Left => {
+                            if n > 0 {
+                                app.state_mut().set_focus_on(Some(FocusOn::Filter(n - 1)));
+                            }
+                        }
+
+                        KeyCode::Down => {
+                            app.state_mut().set_cursor_mode(CursorMode::View('x'));
+                            app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
 
             CursorMode::Edit('x') => match key.code {
                 KeyCode::Char('q') => {
@@ -315,7 +453,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                     .next_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        self.filter.clone(),
+                                        Some(self.new_user.username.to_owned()),
                                     )
                                     .unwrap();
 
@@ -341,7 +479,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                     .prev_users_page(
                                         self.available_rows,
                                         &mut self.db_cursor,
-                                        self.filter.clone(),
+                                        Some(self.filter_user.username.to_owned()),
                                     )
                                     .unwrap();
 
@@ -400,6 +538,14 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                             match app.database().delete_user(user_id) {
                                 Ok(_) => {
                                     self.users.remove(n);
+                                    self.users = app
+                                        .database()
+                                        .fetch_users(
+                                            self.available_rows,
+                                            self.db_cursor,
+                                            self.filter.clone(),
+                                        )
+                                        .unwrap();
                                     app.state_mut()
                                         .set_focus_on(Some(FocusOn::Line(n.saturating_sub(1), 1)));
                                     app.state_mut()
@@ -630,7 +776,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
         self.users = match app.database().fetch_users(
             self.available_rows,
             self.db_cursor,
-            self.filter.clone(),
+            Some(self.filter_user.username.to_owned()),
         ) {
             Ok(users) => users,
             Err(err) => {
@@ -645,27 +791,19 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             }
         };
 
-        if self.users.is_empty() {
-            app.state_mut().set_focus_on(None);
-        } else {
-            match app.state().focus_on() {
-                Some(FocusOn::Line(n, _)) => {
-                    if *n >= self.users.len() {
-                        app.state_mut()
-                            .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
-                    } else if self.users.len() <= self.chunks[1].height.saturating_sub(1) as usize {
-                        self.db_cursor = (self.db_cursor as u64).saturating_sub(
-                            1 + (self.chunks[1].height.saturating_sub(1) as usize
-                                - self.users.len()) as u64,
-                        ) as i64;
-                    }
-                }
-                _ => {
-                    app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
+        if let Some(FocusOn::Line(n, _)) = app.state().focus_on() {
+            if !self.users.is_empty() {
+                if *n >= self.users.len() {
+                    app.state_mut()
+                        .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
+                } else if self.users.len() <= self.chunks[1].height.saturating_sub(1) as usize {
+                    self.db_cursor = (self.db_cursor as u64).saturating_sub(
+                        1 + (self.chunks[1].height.saturating_sub(1) as usize - self.users.len())
+                            as u64,
+                    ) as i64;
                 }
             }
         }
-
         Ok(())
     }
     fn cleanup(&mut self) -> Result<()> {

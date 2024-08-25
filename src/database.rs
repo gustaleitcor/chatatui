@@ -72,6 +72,12 @@ impl Database {
         } else {
             *db_cursor = *db_cursor - users.len() as i64 + limit;
         }
+
         Ok(users)
+    }
+
+    #[allow(dead_code)]
+    pub fn load_users(&mut self) {
+        crud_bd::crud::populate_users(&mut self.pg_conn, 1000);
     }
 }

@@ -27,6 +27,7 @@ pub enum CursorMode {
 
 pub enum FocusOn {
     Line(usize, usize),
+    Filter(usize),
 }
 
 pub struct App {
@@ -59,6 +60,7 @@ impl App {
     pub fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         let mut menu = Menu::new();
         let mut users = Users::new();
+        // self.database().load_users();
 
         thread::spawn({
             let current_event = self.state.clone_current_event();
@@ -118,6 +120,7 @@ impl Clone for FocusOn {
     fn clone(&self) -> Self {
         match self {
             FocusOn::Line(l, c) => FocusOn::Line(*l, *c),
+            FocusOn::Filter(f) => FocusOn::Filter(*f),
         }
     }
 }
