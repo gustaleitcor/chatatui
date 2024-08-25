@@ -16,7 +16,7 @@ use ratatui::{
 
 use crate::{
     database::Database,
-    pages::{menu::Menu, users::Users},
+    pages::{chats::Chats, menu::Menu, users::Users},
     state::State,
     ui::ui,
 };
@@ -60,7 +60,9 @@ impl App {
     pub fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         let mut menu = Menu::new();
         let mut users = Users::new();
+        let mut chats = Chats::new();
         // self.database().load_users();
+        // self.database().load_chats();
 
         thread::spawn({
             let current_event = self.state.clone_current_event();
@@ -72,7 +74,7 @@ impl App {
             let now = std::time::Instant::now();
 
             terminal.draw(|f| {
-                ui(f, self, &mut menu, &mut users);
+                ui(f, self, &mut menu, &mut users, &mut chats);
             })?;
 
             if self.state().has_exited() {

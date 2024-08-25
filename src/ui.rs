@@ -5,13 +5,13 @@ use ratatui::{
 
 use crate::{
     app::{CursorMode, FocusOn},
-    pages::{menu::Menu, page::Page, users::Users},
+    pages::{chats::Chats, menu::Menu, page::Page, users::Users},
     state::CurrentScreen,
 };
 
 use crate::app::App;
 
-pub fn ui(frame: &mut Frame, app: &mut App, menu: &mut Menu, users: &mut Users) {
+pub fn ui(frame: &mut Frame, app: &mut App, menu: &mut Menu, users: &mut Users, chats: &mut Chats) {
     let app_state = app.state_mut();
 
     // Does not consume the event because menu should handle it
@@ -32,7 +32,7 @@ pub fn ui(frame: &mut Frame, app: &mut App, menu: &mut Menu, users: &mut Users) 
         CurrentScreen::Menu => menu.run(frame, app).unwrap(),
         CurrentScreen::Users => users.run(frame, app).unwrap(),
         CurrentScreen::Messages => todo!(""),
-        CurrentScreen::Chats => todo!(""),
+        CurrentScreen::Chats => chats.run(frame, app).unwrap(),
         CurrentScreen::Exit => {}
     }
 }

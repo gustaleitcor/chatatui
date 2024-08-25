@@ -579,7 +579,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                 let user_password = &user.password.to_owned();
 
                                 // TODO: handle error
-                                match app.database().update_username(*user_id, user_name) {
+                                match app.database().update_user_username(*user_id, user_name) {
                                     Ok(_) => app
                                         .state_mut()
                                         .set_prompt_message(Some(Ok("User created".to_string()))),
@@ -606,7 +606,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                 }
 
                                 // TODO: handle errors:
-                                match app.database().update_password(*user_id, user_password) {
+                                match app.database().update_user_password(*user_id, user_password) {
                                     Ok(_) => app
                                         .state_mut()
                                         .set_prompt_message(Some(Ok("User updated".to_string()))),
