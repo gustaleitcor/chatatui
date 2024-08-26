@@ -3,9 +3,8 @@ use std::{
     rc::Rc,
 };
 
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{NaiveDateTime, Utc};
 use crud_bd::crud::message::Message;
-use diesel::dsl::now;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -74,24 +73,24 @@ impl Messages {
     }
 }
 
-impl Into<MessageStr> for Message {
-    fn into(self) -> MessageStr {
+impl From<Message> for MessageStr {
+    fn from(s: Message) -> MessageStr {
         // if user_id is none set to "NULL" else set to user_id in string format.
 
-        match self.user_id {
+        match s.user_id {
             Some(user_id) => MessageStr {
-                id: self.id,
-                content: self.content,
-                chat_id: self.chat_id.to_string(),
+                id: s.id,
+                content: s.content,
+                chat_id: s.chat_id.to_string(),
                 user_id: user_id.to_string(),
-                date: self.date,
+                date: s.date,
             },
             None => MessageStr {
-                id: self.id,
-                content: self.content,
-                chat_id: self.chat_id.to_string(),
+                id: s.id,
+                content: s.content,
+                chat_id: s.chat_id.to_string(),
                 user_id: "NULL".to_string(),
-                date: self.date,
+                date: s.date,
             },
         }
     }

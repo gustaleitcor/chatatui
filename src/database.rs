@@ -1,6 +1,4 @@
-use std::io::ErrorKind;
-
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::NaiveDate;
 use crud_bd::crud::{chat::Chat, establish_connection, message::Message, user::User};
 use diesel::{result::Error, PgConnection, QueryResult};
 
@@ -362,6 +360,7 @@ impl Database {
         crud_bd::crud::message::delete_message(&mut self.pg_conn, message_id)
     }
 
+    #[allow(dead_code)]
     pub fn load_messages(&mut self, limit: usize) {
         crud_bd::crud::populate_message(&mut self.pg_conn, limit);
     }
