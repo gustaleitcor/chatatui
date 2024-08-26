@@ -37,7 +37,7 @@ impl Database {
         id_filter: Option<String>,
     ) -> QueryResult<Vec<User>> {
         let id_filter = id_filter
-            .map(|e| {
+            .and_then(|e| {
                 if e.is_empty() {
                     None
                 } else {
@@ -47,7 +47,6 @@ impl Database {
                     })
                 }
             })
-            .flatten()
             .flatten();
 
         crud_bd::crud::user::get_users_with_pagination(
@@ -113,7 +112,7 @@ impl Database {
         id_filter: Option<String>,
     ) -> QueryResult<Vec<Chat>> {
         let id_filter = id_filter
-            .map(|e| {
+            .and_then(|e| {
                 if e.is_empty() {
                     None
                 } else {
@@ -123,7 +122,6 @@ impl Database {
                     })
                 }
             })
-            .flatten()
             .flatten();
 
         crud_bd::crud::chat::get_chats_with_pagination(
@@ -207,7 +205,7 @@ impl Database {
         message_date: Option<String>,
     ) -> QueryResult<Vec<Message>> {
         let message_id = message_id
-            .map(|e| {
+            .and_then(|e| {
                 if e.is_empty() {
                     None
                 } else {
@@ -217,11 +215,10 @@ impl Database {
                     })
                 }
             })
-            .flatten()
             .flatten();
 
         let user_id = user_id
-            .map(|e| {
+            .and_then(|e| {
                 if e.is_empty() {
                     None
                 } else {
@@ -231,11 +228,10 @@ impl Database {
                     })
                 }
             })
-            .flatten()
             .flatten();
 
         let chat_id = chat_id
-            .map(|e| {
+            .and_then(|e| {
                 if e.is_empty() {
                     None
                 } else {
@@ -245,11 +241,10 @@ impl Database {
                     })
                 }
             })
-            .flatten()
             .flatten();
 
         let message_date = message_date
-            .map(|e| {
+            .and_then(|e| {
                 if e.is_empty() {
                     None
                 } else {
@@ -259,7 +254,6 @@ impl Database {
                     })
                 }
             })
-            .flatten()
             .flatten();
 
         crud_bd::crud::message::get_messages_with_pagination(

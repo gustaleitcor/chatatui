@@ -268,7 +268,7 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                 ]
                 .as_ref(),
             )
-            .split(frame.size());
+            .split(frame.area());
 
         self.available_rows = self.chunks[2].height.saturating_sub(1) as i64;
 
