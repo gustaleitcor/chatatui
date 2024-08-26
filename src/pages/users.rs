@@ -57,28 +57,14 @@ impl Users {
 
 impl Page<CrosstermBackend<Stdout>> for Users {
     fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()> {
-        // Renders header and debug info.
-        let mut debug_row: usize = 0;
-        let mut debug_col: usize = 0;
-        if let Some(FocusOn::Line(row, col)) = state.focus_on().clone() {
-            debug_row = row;
-            debug_col = col;
-        }
+        // Renders header
         frame.render_widget(
             Paragraph::new("Users").alignment(Alignment::Center).block(
                 Block::default()
                     .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
                     .title(format!(
-                        "db_cursor: {} | Page: {} | Userslen: {} | TableHeight: {} | Row: {} | Column: {} | AvailableRows: {}",
-                        self.db_cursor,
-                        self.db_cursor
-                            .checked_div(self.chunks[1].as_size().height.saturating_sub(1) as i64)
-                            .unwrap_or(0),
-                        self.users.len(),
-                        self.chunks[1].as_size().height,
-                        debug_row,
-                        debug_col,
-                        self.available_rows
+                        " Page: {} ",
+                        self.db_cursor.checked_div(self.available_rows).unwrap_or(0),
                     )),
             ),
             self.chunks[0],
@@ -257,8 +243,8 @@ impl Page<CrosstermBackend<Stdout>> for Users {
             CursorMode::Edit('c') => "Press 'Enter' to confirm | Press 'esc' to cancel",
             CursorMode::Edit('u') => "Press 'Enter' to confirm | Press 'esc' to cancel",
             CursorMode::Edit('d') => "Press 'y' to confirm | Press 'esc' to cancel",
-            CursorMode::View(_) => "Press 'f' to filter | Press 'q' to goto menu",
-            CursorMode::Edit(_) => "Press 'c' to create | Press 'd' to delete | Press 'u' to update | Press 'q' to goto menu",
+            CursorMode::View(_) => "Press 'Esc' to toggle to Edit Mode | Press 'f' to filter | Press 'q' to goto menu",
+            CursorMode::Edit(_) => "Press 'Esc' to toggle to View Mode | Press 'c' to create | Press 'd' to delete | Press 'u' to update | Press 'q' to goto menu",
         };
 
         frame.render_widget(

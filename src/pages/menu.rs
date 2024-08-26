@@ -56,7 +56,7 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
         );
 
         frame.render_widget(
-            Paragraph::new("Press 'q' to exit")
+            Paragraph::new("Press 'Enter' to confirm | Press 'q' to exit")
                 .alignment(Alignment::Center)
                 .block(
                     Block::default()
