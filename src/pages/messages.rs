@@ -195,33 +195,33 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
             .height(1);
 
         let rows = self.messages.iter().enumerate().map(|(i, data)| {
-            if let CursorMode::Edit('u') = state.cursor_mode() {
-                if let Some(FocusOn::Line(row, col)) = state.focus_on() {
-                    if i == *row {
-                        let mut cells = vec![];
-                        for (j, cell) in [
-                            data.id.to_string(),
-                            data.content.to_owned(),
-                            data.chat_id.to_owned(),
-                            data.user_id.to_owned(),
-                            data.date.and_utc().to_rfc3339(),
-                        ]
-                        .iter()
-                        .enumerate()
-                        {
-                            if j == *col {
-                                cells.push(
-                                    Cell::from(Text::from(cell.to_owned()))
-                                        .style(Style::default().bg(Color::LightBlue)),
-                                );
-                            } else {
-                                cells.push(Cell::from(Text::from(cell.to_owned())));
-                            }
-                        }
-                        return Row::new(cells);
-                    }
-                }
-            }
+            // if let CursorMode::Edit('u') = state.cursor_mode() {
+            //     if let Some(FocusOn::Line(row, col)) = state.focus_on() {
+            //         if i == *row {
+            //             let mut cells = vec![];
+            //             for (j, cell) in [
+            //                 data.id.to_string(),
+            //                 data.content.to_owned(),
+            //                 data.chat_id.to_owned(),
+            //                 data.user_id.to_owned(),
+            //                 data.date.and_utc().to_rfc3339(),
+            //             ]
+            //             .iter()
+            //             .enumerate()
+            //             {
+            //                 if j == *col {
+            //                     cells.push(
+            //                         Cell::from(Text::from(cell.to_owned()))
+            //                             .style(Style::default().bg(Color::LightBlue)),
+            //                     );
+            //                 } else {
+            //                     cells.push(Cell::from(Text::from(cell.to_owned())));
+            //                 }
+            //             }
+            //             return Row::new(cells);
+            //         }
+            //     }
+            // }
 
             if let CursorMode::Edit('c') = state.cursor_mode() {
                 if let Some(FocusOn::Line(row, col)) = state.focus_on() {
@@ -321,10 +321,12 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
 
         let guide_content = match state.cursor_mode() {
             CursorMode::Edit('c') => "Press 'Enter' to confirm | Press 'esc' to cancel",
-            CursorMode::Edit('u') => "Press 'Enter' to confirm | Press 'esc' to cancel",
+            // CursorMode::Edit('u') => "Press 'Enter' to confirm | Press 'esc' to cancel",
             CursorMode::Edit('d') => "Press 'y' to confirm | Press 'esc' to cancel",
             CursorMode::View(_) => "Press 'f' to filter | Press 'q' to goto menu",
-            CursorMode::Edit(_) => "Press 'c' to create | Press 'd' to delete | Press 'u' to update | Press 'q' to goto menu",
+            CursorMode::Edit(_) => {
+                "Press 'c' to create | Press 'd' to delete | Press 'q' to goto menu"
+            }
         };
 
         frame.render_widget(
@@ -581,7 +583,7 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                         if !self.messages.is_empty() {
                             if n > 0 {
                                 app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
-                            } else {
+                            } else if !(self.db_cursor == 0 && n == 0) {
                                 let chats = app
                                     .database()
                                     .prev_messages_page(
@@ -596,14 +598,9 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     .into_iter()
                                     .map(|m| m.into())
                                     .collect();
-
-                                if !self.db_cursor != 0 && n != 0 {
-                                    self.messages = chats;
-                                    app.state_mut().set_focus_on(Some(FocusOn::Line(
-                                        self.messages.len() - 1,
-                                        1,
-                                    )));
-                                }
+                                self.messages = chats;
+                                app.state_mut()
+                                    .set_focus_on(Some(FocusOn::Line(self.messages.len() - 1, 1)));
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
@@ -621,16 +618,15 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                     }
                 }
 
-                KeyCode::Char('u') => {
-                    if !self.messages.is_empty() {
-                        if let Some(FocusOn::Line(row, _)) = app.state().focus_on() {
-                            if self.messages.get(*row).is_some() {
-                                app.state_mut().set_cursor_mode(CursorMode::Edit('u'));
-                            }
-                        }
-                    }
-                }
-
+                // KeyCode::Char('u') => {
+                //     if !self.messages.is_empty() {
+                //         if let Some(FocusOn::Line(row, _)) = app.state().focus_on() {
+                //             if self.messages.get(*row).is_some() {
+                //                 app.state_mut().set_cursor_mode(CursorMode::Edit('u'));
+                //             }
+                //         }
+                //     }
+                // }
                 KeyCode::Char('c') => {
                     app.state_mut().set_cursor_mode(CursorMode::Edit('c'));
                     self.messages.push(MessageStr {

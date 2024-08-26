@@ -473,7 +473,7 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                         if !self.chats.is_empty() {
                             if n > 0 {
                                 app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
-                            } else {
+                            } else if !(self.db_cursor == 0 && n == 0) {
                                 let chats = app
                                     .database()
                                     .prev_chats_page(
@@ -483,12 +483,9 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                                         Some(self.filter.id.clone()),
                                     )
                                     .unwrap();
-
-                                if !self.db_cursor != 0 && n != 0 {
-                                    self.chats = chats;
-                                    app.state_mut()
-                                        .set_focus_on(Some(FocusOn::Line(self.chats.len() - 1, 1)));
-                                }
+                                self.chats = chats;
+                                app.state_mut()
+                                    .set_focus_on(Some(FocusOn::Line(self.chats.len() - 1, 1)));
                             }
                         } else {
                             app.state_mut().set_focus_on(None);

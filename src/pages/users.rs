@@ -474,7 +474,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         if !self.users.is_empty() {
                             if n > 0 {
                                 app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
-                            } else {
+                            } else if !(self.db_cursor == 0 && n == 0) {
                                 let users = app
                                     .database()
                                     .prev_users_page(
@@ -484,12 +484,9 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                                         Some(self.filter.id.clone()),
                                     )
                                     .unwrap();
-
-                                if !self.db_cursor != 0 && n != 0 {
-                                    self.users = users;
-                                    app.state_mut()
-                                        .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
-                                }
+                                self.users = users;
+                                app.state_mut()
+                                    .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
