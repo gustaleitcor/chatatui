@@ -654,13 +654,13 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     app.state_mut()
                                         .set_focus_on(Some(FocusOn::Line(n.saturating_sub(1), 1)));
                                     app.state_mut()
-                                        .set_prompt_message(Some(Ok("Chat deleted".to_string())))
+                                        .set_prompt_message(Some(Ok("Message deleted".to_string())))
                                 }
 
                                 Err(err) => app.state_mut().set_prompt_message(Some(Err(
                                     std::io::Error::new(
                                         std::io::ErrorKind::Other,
-                                        format!("Failed to delete user. {:?}", err),
+                                        format!("Failed to delete message. {:?}", err),
                                     ),
                                 ))),
                             }
@@ -809,14 +809,15 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                 &self.new_message.content,
                             ) {
                                 Ok(_) => {
-                                    app.state_mut()
-                                        .set_prompt_message(Some(Ok("User created".to_string())));
+                                    app.state_mut().set_prompt_message(Some(Ok(
+                                        "Message created".to_string()
+                                    )));
                                 }
 
                                 Err(err) => app.state_mut().set_prompt_message(Some(Err(
                                     std::io::Error::new(
                                         std::io::ErrorKind::Other,
-                                        format!("Failed to create user. {:?}", err),
+                                        format!("Failed to create message. {:?}", err),
                                     ),
                                 ))),
                             }
@@ -916,7 +917,7 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                 app.state_mut()
                     .set_prompt_message(Some(Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("Failed to fetch chats. {:?}", err.to_string()),
+                        format!("Failed to fetch messages. {:?}", err.to_string()),
                     ))));
 
                 self.db_cursor = 0;
@@ -960,7 +961,7 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                 app.state_mut()
                     .set_prompt_message(Some(Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("Failed to fetch chats. {:?}", err.to_string()),
+                        format!("Failed to fetch messages. {:?}", err.to_string()),
                     ))));
 
                 self.db_cursor = 0;

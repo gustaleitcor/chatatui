@@ -540,7 +540,7 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                                 Err(err) => app.state_mut().set_prompt_message(Some(Err(
                                     std::io::Error::new(
                                         std::io::ErrorKind::Other,
-                                        format!("Failed to delete user. {:?}", err),
+                                        format!("Failed to delete chat. {:?}", err),
                                     ),
                                 ))),
                             }
@@ -579,7 +579,7 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                                             std::io::Error::new(
                                                 std::io::ErrorKind::Other,
                                                 format!(
-                                                    "Failed to create chat title. {:?}",
+                                                    "Failed to set chat title. {:?}",
                                                     err.to_string()
                                                 ),
                                             ),
@@ -606,7 +606,7 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                                             std::io::Error::new(
                                                 std::io::ErrorKind::Other,
                                                 format!(
-                                                    "Failed to update user password. {:?}",
+                                                    "Failed to update chat privacy. {:?}",
                                                     err,
                                                 ),
                                             ),
@@ -682,13 +682,13 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                             {
                                 Ok(_) => {
                                     app.state_mut()
-                                        .set_prompt_message(Some(Ok("User created".to_string())));
+                                        .set_prompt_message(Some(Ok("Chat created".to_string())));
                                 }
 
                                 Err(err) => app.state_mut().set_prompt_message(Some(Err(
                                     std::io::Error::new(
                                         std::io::ErrorKind::Other,
-                                        format!("Failed to create user. {:?}", err),
+                                        format!("Failed to create chat. {:?}", err),
                                     ),
                                 ))),
                             }
