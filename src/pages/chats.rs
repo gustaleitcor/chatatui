@@ -749,6 +749,22 @@ impl Page<CrosstermBackend<Stdout>> for Chats {
                             }
                         }
 
+                        KeyCode::Up => {
+                            if let Some(user) = self.chats.get_mut(row) {
+                                if col == 2 {
+                                    user.is_public = !user.is_public;
+                                }
+                            }
+                        }
+
+                        KeyCode::Down => {
+                            if let Some(user) = self.chats.get_mut(row) {
+                                if col == 2 {
+                                    user.is_public = !user.is_public;
+                                }
+                            }
+                        }
+
                         _ => (),
                     }
                 }
