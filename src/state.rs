@@ -9,6 +9,8 @@ use ratatui::crossterm::event::{self, Event};
 use crate::app::{CursorMode, FocusOn};
 
 pub enum CurrentScreen {
+    Login,
+    Register,
     Menu,
     Users,
     Messages,
@@ -30,7 +32,7 @@ impl State {
     pub fn new() -> State {
         State {
             current_event: Arc::new(Mutex::new(None)),
-            current_screen: CurrentScreen::Menu,
+            current_screen: CurrentScreen::Register,
             cursor_mode: CursorMode::View('x'),
             focus_on: None,
             error: None,
@@ -66,6 +68,16 @@ impl State {
 
     pub fn goto_chats(&mut self) {
         self.current_screen = CurrentScreen::Chats;
+        self.screen_has_changed = true;
+    }
+
+    pub fn goto_login(&mut self) {
+        self.current_screen = CurrentScreen::Login;
+        self.screen_has_changed = true;
+    }
+
+    pub fn goto_register(&mut self) {
+        self.current_screen = CurrentScreen::Register;
         self.screen_has_changed = true;
     }
 

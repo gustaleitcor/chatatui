@@ -16,7 +16,7 @@ use crate::{
     state::State,
 };
 
-use super::page::Page;
+use crate::page::Page;
 
 pub struct Menu {
     pub chunks: Rc<[Rect]>,

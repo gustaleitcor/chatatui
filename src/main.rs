@@ -1,10 +1,14 @@
+mod admin;
 mod app;
+mod client;
+mod common;
 mod database;
-mod pages;
+mod page;
 mod state;
 mod ui;
 
 use app::App;
+// use crate::client::app::App;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use std::io::{stdout, Result};
 

@@ -19,7 +19,7 @@ use crate::{
     state::State,
 };
 
-use super::page::Page;
+use crate::page::Page;
 
 struct Filter {
     id: String,

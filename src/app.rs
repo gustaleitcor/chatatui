@@ -15,8 +15,9 @@ use ratatui::{
 };
 
 use crate::{
+    admin::{chats::Chats, menu::Menu, messages::Messages, users::Users},
+    common::{login::Login, register::Register},
     database::Database,
-    pages::{chats::Chats, menu::Menu, messages::Messages, users::Users},
     state::State,
     ui::ui,
 };
@@ -62,6 +63,8 @@ impl App {
         let mut users = Users::new();
         let mut chats = Chats::new();
         let mut messages = Messages::new();
+        let mut login = Login::new();
+        let mut register = Register::new();
         // self.database().load_users(1000);
         // self.database().load_chats(50);
         // self.database().load_messages(500);
@@ -76,7 +79,16 @@ impl App {
             let now = std::time::Instant::now();
 
             terminal.draw(|f| {
-                ui(f, self, &mut menu, &mut users, &mut messages, &mut chats);
+                ui(
+                    f,
+                    self,
+                    &mut menu,
+                    &mut users,
+                    &mut messages,
+                    &mut chats,
+                    &mut login,
+                    &mut register,
+                );
             })?;
 
             if self.state().has_exited() {

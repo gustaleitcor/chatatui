@@ -4,13 +4,16 @@ use ratatui::{
 };
 
 use crate::{
+    admin::{chats::Chats, menu::Menu, messages::Messages, users::Users},
     app::{CursorMode, FocusOn},
-    pages::{chats::Chats, menu::Menu, messages::Messages, page::Page, users::Users},
+    common::{login::Login, register::Register},
+    page::Page,
     state::CurrentScreen,
 };
 
 use crate::app::App;
 
+#[allow(clippy::too_many_arguments)]
 pub fn ui(
     frame: &mut Frame,
     app: &mut App,
@@ -18,6 +21,8 @@ pub fn ui(
     users: &mut Users,
     messages: &mut Messages,
     chats: &mut Chats,
+    login: &mut Login,
+    register: &mut Register,
 ) {
     let app_state = app.state_mut();
 
@@ -40,6 +45,8 @@ pub fn ui(
         CurrentScreen::Users => users.run(frame, app).unwrap(),
         CurrentScreen::Messages => messages.run(frame, app).unwrap(),
         CurrentScreen::Chats => chats.run(frame, app).unwrap(),
+        CurrentScreen::Login => login.run(frame, app).unwrap(),
+        CurrentScreen::Register => register.run(frame, app).unwrap(),
         CurrentScreen::Exit => {}
     }
 }
