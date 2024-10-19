@@ -26,7 +26,7 @@ struct Filter {
     title: String,
 }
 
-pub struct Chats {
+pub struct AdminChats {
     chunks: Rc<[Rect]>,
     db_cursor: i64,
     chats: Vec<Chat>,
@@ -35,7 +35,7 @@ pub struct Chats {
     available_rows: i64,
 }
 
-impl Chats {
+impl AdminChats {
     pub fn new() -> Self {
         Self {
             chunks: Rc::new([Rect::default()]),
@@ -55,7 +55,7 @@ impl Chats {
     }
 }
 
-impl Page<CrosstermBackend<Stdout>> for Chats {
+impl Page<CrosstermBackend<Stdout>> for AdminChats {
     fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()> {
         // Renders header
         frame.render_widget(

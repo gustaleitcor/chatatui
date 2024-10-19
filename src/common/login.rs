@@ -183,7 +183,7 @@ impl Page<CrosstermBackend<Stdout>> for Login {
                     match response {
                         Ok(user) => {
                             if self.login == user.username && self.password == user.password {
-                                app.state_mut().goto_chats();
+                                app.state_mut().goto_client_chats();
                                 app.state_mut().set_prompt_message(None);
                             } else {
                                 app.state_mut()

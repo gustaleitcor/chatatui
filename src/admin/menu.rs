@@ -96,7 +96,7 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
                     match n {
                         0 => state.goto_users(),
                         1 => state.goto_messages(),
-                        2 => state.goto_chats(),
+                        2 => state.goto_admin_chats(),
                         _ => {}
                     }
                 }

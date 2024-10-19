@@ -15,7 +15,8 @@ use ratatui::{
 };
 
 use crate::{
-    admin::{chats::Chats, menu::Menu, messages::Messages, users::Users},
+    admin::{chats::AdminChats, menu::Menu, messages::Messages, users::Users},
+    client::chat::ClientChats,
     common::{login::Login, register::Register},
     database::Database,
     state::State,
@@ -61,10 +62,11 @@ impl App {
     pub fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         let mut menu = Menu::new();
         let mut users = Users::new();
-        let mut chats = Chats::new();
+        let mut admin_chats = AdminChats::new();
         let mut messages = Messages::new();
         let mut login = Login::new();
         let mut register = Register::new();
+        let mut client_chats = ClientChats::new();
         // self.database().load_users(1000);
         // self.database().load_chats(50);
         // self.database().load_messages(500);
@@ -85,7 +87,8 @@ impl App {
                     &mut menu,
                     &mut users,
                     &mut messages,
-                    &mut chats,
+                    &mut admin_chats,
+                    &mut client_chats,
                     &mut login,
                     &mut register,
                 );

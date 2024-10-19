@@ -4,8 +4,9 @@ use ratatui::{
 };
 
 use crate::{
-    admin::{chats::Chats, menu::Menu, messages::Messages, users::Users},
+    admin::{chats::AdminChats, menu::Menu, messages::Messages, users::Users},
     app::{CursorMode, FocusOn},
+    client::chat::ClientChats,
     common::{login::Login, register::Register},
     page::Page,
     state::CurrentScreen,
@@ -20,7 +21,8 @@ pub fn ui(
     menu: &mut Menu,
     users: &mut Users,
     messages: &mut Messages,
-    chats: &mut Chats,
+    admin_chats: &mut AdminChats,
+    client_chats: &mut ClientChats,
     login: &mut Login,
     register: &mut Register,
 ) {
@@ -44,7 +46,8 @@ pub fn ui(
         CurrentScreen::Menu => menu.run(frame, app).unwrap(),
         CurrentScreen::Users => users.run(frame, app).unwrap(),
         CurrentScreen::Messages => messages.run(frame, app).unwrap(),
-        CurrentScreen::Chats => chats.run(frame, app).unwrap(),
+        CurrentScreen::AdminChats => admin_chats.run(frame, app).unwrap(),
+        CurrentScreen::ClientChats => client_chats.run(frame, app).unwrap(),
         CurrentScreen::Login => login.run(frame, app).unwrap(),
         CurrentScreen::Register => register.run(frame, app).unwrap(),
         CurrentScreen::Exit => {}

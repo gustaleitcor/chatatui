@@ -25,16 +25,16 @@ use crate::{
 
 use crate::page::Page;
 
-pub struct Chat {
+pub struct ClientChats {
     pub chunks: Rc<[Rect]>,
     pub messages: Vec<Message>,
     pub message: String,
 }
 
-impl Chat {
+impl ClientChats {
     #[allow(dead_code)]
-    pub fn new() -> Chat {
-        Chat {
+    pub fn new() -> ClientChats {
+        ClientChats {
             chunks: Rc::new([]),
             messages: Vec::new(),
             message: String::new(),
@@ -42,7 +42,7 @@ impl Chat {
     }
 }
 
-impl Page<CrosstermBackend<Stdout>> for Chat {
+impl Page<CrosstermBackend<Stdout>> for ClientChats {
     fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()> {
         frame.render_widget(
             Paragraph::new("Chat")

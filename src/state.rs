@@ -14,7 +14,8 @@ pub enum CurrentScreen {
     Menu,
     Users,
     Messages,
-    Chats,
+    AdminChats,
+    ClientChats,
     Exit,
 }
 
@@ -66,8 +67,8 @@ impl State {
         self.screen_has_changed = true;
     }
 
-    pub fn goto_chats(&mut self) {
-        self.current_screen = CurrentScreen::Chats;
+    pub fn goto_admin_chats(&mut self) {
+        self.current_screen = CurrentScreen::AdminChats;
         self.screen_has_changed = true;
     }
 
@@ -78,6 +79,11 @@ impl State {
 
     pub fn goto_register(&mut self) {
         self.current_screen = CurrentScreen::Register;
+        self.screen_has_changed = true;
+    }
+
+    pub fn goto_client_chats(&mut self) {
+        self.current_screen = CurrentScreen::ClientChats;
         self.screen_has_changed = true;
     }
 
