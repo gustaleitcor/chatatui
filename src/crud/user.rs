@@ -43,6 +43,14 @@ pub fn get_user_by_username(conn: &mut PgConnection, user_username: &str) -> Que
     users.filter(username.ilike(user_username)).first(conn)
 }
 
+pub fn user_authenticate(
+    conn: &mut PgConnection,
+    user_username: &str,
+    user_password: &str,
+) -> QueryResult<bool> {
+    let user = get_user_by_username(conn, user_username)?;
+    Ok(user.password == user_password)
+}
 // general purpose function
 pub fn get_users_with_pagination(
     conn: &mut PgConnection,

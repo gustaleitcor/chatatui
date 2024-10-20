@@ -1,5 +1,6 @@
 pub mod chat;
 pub mod message;
+pub mod participants;
 pub mod user;
 
 use chat::create_chat;
@@ -36,8 +37,8 @@ pub fn populate_chats(conn: &mut PgConnection, num_chats: usize) {
     }
 }
 
+// TODO: remake this
 pub fn populate_message(conn: &mut PgConnection, num_messages: usize) {
-
     //HACK: idk what i'm doing
     #[derive(QueryableByName, Debug)]
     #[diesel(table_name = users)]
@@ -61,16 +62,21 @@ pub fn populate_message(conn: &mut PgConnection, num_messages: usize) {
     }
     for _ in 0..num_messages {
         let message: String = Sentence(EN, 1..20).fake();
-        let user = sql_query("select * from users where id = (select id from users order by random() limit 1);
-").get_results::<UserQuery>(conn);
+        let user = sql_query(
+            "select * from users where id = (select id from users order by random() limit 1);
+",
+        )
+        .get_results::<UserQuery>(conn);
         let user_id = user.unwrap()[0].id_query;
 
-        let chat = sql_query("select * from chats where id = (select id from chats order by random() limit 1);
-").get_results::<ChatQuery>(conn);
+        let chat = sql_query(
+            "select * from chats where id = (select id from chats order by random() limit 1);
+",
+        )
+        .get_results::<ChatQuery>(conn);
         let chat_id = chat.unwrap()[0].id_query;
 
-
-        let _ = create_message(conn, message.as_str(), user_id, chat_id, None).unwrap();
+        let _ = create_message(conn, message.as_str(), user_id, None).unwrap();
     }
 }
 
