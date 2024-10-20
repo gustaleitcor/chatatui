@@ -47,9 +47,14 @@ pub fn user_authenticate(
     conn: &mut PgConnection,
     user_username: &str,
     user_password: &str,
-) -> QueryResult<bool> {
+) -> QueryResult<Option<User>> {
     let user = get_user_by_username(conn, user_username)?;
-    Ok(user.password == user_password)
+
+    if user.password == user_password {
+        return Ok(Some(user));
+    }
+
+    Ok(None)
 }
 // general purpose function
 pub fn get_users_with_pagination(
