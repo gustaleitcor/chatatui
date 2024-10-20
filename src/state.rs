@@ -16,6 +16,7 @@ pub enum CurrentScreen {
     Users,
     Messages,
     AdminChats,
+    ClientChats,
     Chat,
     Exit,
 }
@@ -40,7 +41,7 @@ impl State {
                 password: String::new(),
             },
             current_event: Arc::new(Mutex::new(None)),
-            current_screen: CurrentScreen::Chat,
+            current_screen: CurrentScreen::Login,
             cursor_mode: CursorMode::View('x'),
             focus_on: None,
             error: None,
@@ -91,6 +92,11 @@ impl State {
 
     pub fn goto_chat(&mut self) {
         self.current_screen = CurrentScreen::Chat;
+        self.screen_has_changed = true;
+    }
+
+    pub fn goto_client_chats(&mut self) {
+        self.current_screen = CurrentScreen::ClientChats;
         self.screen_has_changed = true;
     }
 
@@ -160,5 +166,13 @@ impl State {
 
     pub fn error_timestamp(&self) -> &Option<Instant> {
         &self.error_timestamp
+    }
+
+    pub fn set_user(&mut self, user: user::User) {
+        self.user = user;
+    }
+
+    pub fn user(&self) -> &user::User {
+        &self.user
     }
 }

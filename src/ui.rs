@@ -6,7 +6,7 @@ use ratatui::{
 use crate::{
     admin::{chats::AdminChats, menu::Menu, messages::Messages, users::Users},
     app::{CursorMode, FocusOn},
-    client::chat::Chat,
+    client::{chat::Chat, chats::ClientChats},
     common::{login::Login, register::Register},
     page::Page,
     state::CurrentScreen,
@@ -22,7 +22,8 @@ pub fn ui(
     users: &mut Users,
     messages: &mut Messages,
     admin_chats: &mut AdminChats,
-    client_chats: &mut Chat,
+    client_chats: &mut ClientChats,
+    chat: &mut Chat,
     login: &mut Login,
     register: &mut Register,
 ) {
@@ -47,7 +48,8 @@ pub fn ui(
         CurrentScreen::Users => users.run(frame, app).unwrap(),
         CurrentScreen::Messages => messages.run(frame, app).unwrap(),
         CurrentScreen::AdminChats => admin_chats.run(frame, app).unwrap(),
-        CurrentScreen::Chat => client_chats.run(frame, app).unwrap(),
+        CurrentScreen::ClientChats => client_chats.run(frame, app).unwrap(),
+        CurrentScreen::Chat => chat.run(frame, app).unwrap(),
         CurrentScreen::Login => login.run(frame, app).unwrap(),
         CurrentScreen::Register => register.run(frame, app).unwrap(),
         CurrentScreen::Exit => {}

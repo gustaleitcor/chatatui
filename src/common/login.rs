@@ -180,11 +180,12 @@ impl Page<CrosstermBackend<Stdout>> for Login {
                         .authenticate_user(&self.login, &self.password);
 
                     match response {
-                        Ok(true) => {
-                            app.state_mut().goto_chat();
+                        Ok(Some(user)) => {
+                            app.state_mut().set_user(user);
+                            app.state_mut().goto_client_chats();
                             app.state_mut().set_prompt_message(None);
                         }
-                        Ok(false) => {
+                        Ok(None) => {
                             app.state_mut()
                                 .set_prompt_message(Some(Err(std::io::Error::new(
                                     std::io::ErrorKind::Other,

@@ -29,6 +29,7 @@ pub struct Chat {
     pub chunks: Rc<[Rect]>,
     pub messages: Vec<Message>,
     pub message: String,
+    pub chat_id: Option<i32>,
 }
 
 impl Chat {
@@ -38,6 +39,7 @@ impl Chat {
             chunks: Rc::new([]),
             messages: Vec::new(),
             message: String::new(),
+            chat_id: None,
         }
     }
 }
@@ -125,12 +127,44 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
 
             CursorMode::Edit(_) => match key.code {
                 KeyCode::Enter => {
+                    let user_id = app.state().user().id;
+
+                    let chat_id = match self.chat_id {
+                        Some(id) => id,
+                        None => {
+                            app.state_mut()
+                                .set_prompt_message(Some(Err(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    "Chat id is not set",
+                                ))));
+                            app.state_mut().goto_login();
+                            return Ok(());
+                        }
+                    };
+
+                    let msg =
+                        match app
+                            .database()
+                            .create_message(user_id, chat_id, self.message.as_str())
+                        {
+                            Ok(msg) => msg,
+                            Err(err) => {
+                                app.state_mut()
+                                    .set_prompt_message(Some(Err(std::io::Error::new(
+                                        std::io::ErrorKind::Other,
+                                        format!("Failed to fetch chats. {:?}", err.to_string()),
+                                    ))));
+                                return Ok(());
+                            }
+                        };
+
                     self.messages.push(Message {
-                        id: 0,
-                        participant_id: 0,
-                        content: self.message.clone(),
-                        date: chrono::Local::now().naive_local(),
+                        id: msg.id,
+                        participant_id: msg.participant_id,
+                        content: msg.content,
+                        date: msg.date,
                     });
+
                     self.message.clear();
                 }
 

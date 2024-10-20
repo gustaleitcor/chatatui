@@ -1,7 +1,10 @@
 use chrono::NaiveDate;
 use crud_bd::crud::{
-    chat::Chat, establish_connection, message::Message,
-    participants::get_participants_by_chat_and_user, user::User,
+    chat::Chat,
+    establish_connection,
+    message::Message,
+    participants::get_participants_by_chat_and_user,
+    user::{self, User},
 };
 use diesel::{result::Error, PgConnection, QueryResult};
 
@@ -330,20 +333,10 @@ impl Database {
 
     pub fn create_message(
         &mut self,
-        user_id: &str,
-        chat_id: &str,
+        user_id: i32,
+        chat_id: i32,
         message_text: &str,
     ) -> QueryResult<Message> {
-        let user_id = match user_id.parse::<i32>() {
-            Ok(e) => e,
-            Err(_) => return Err(Error::NotFound),
-        };
-
-        let chat_id = match chat_id.parse::<i32>() {
-            Ok(e) => e,
-            Err(_) => return Err(Error::NotFound),
-        };
-
         let part_id = match get_participants_by_chat_and_user(&mut self.pg_conn, user_id, chat_id) {
             Ok(p) => p.id,
             Err(_) => return Err(Error::NotFound),
@@ -367,7 +360,11 @@ impl Database {
         Ok(participant.user_id)
     }
 
-    pub fn authenticate_user(&mut self, username: &str, password: &str) -> QueryResult<bool> {
+    pub fn authenticate_user(
+        &mut self,
+        username: &str,
+        password: &str,
+    ) -> QueryResult<Option<user::User>> {
         crud_bd::crud::user::user_authenticate(&mut self.pg_conn, username, password)
     }
 }

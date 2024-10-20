@@ -612,6 +612,7 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                         id: -1,
                         user_id: "".to_string(),
                         chat_id: "".to_string(),
+                        participant_id: "".to_string(),
                         content: "".to_string(),
                         date: Utc::now().naive_utc(),
                     });
@@ -796,18 +797,17 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                 if let Some(FocusOn::Line(row, col)) = app.state().focus_on().clone() {
                     match key.code {
                         KeyCode::Enter => {
-                            // TODO: handle errors
+                            // TODO: handle parse error
                             match app.database().create_message(
-                                &self.new_message.user_id,
-                                &self.new_message.chat_id,
-                                &self.new_message.content,
+                                self.new_message.user_id.parse::<i32>().unwrap(),
+                                self.new_message.chat_id.parse::<i32>().unwrap(),
+                                self.new_message.content.as_str(),
                             ) {
                                 Ok(_) => {
                                     app.state_mut().set_prompt_message(Some(Ok(
                                         "Message created".to_string()
                                     )));
                                 }
-
                                 Err(err) => app.state_mut().set_prompt_message(Some(Err(
                                     std::io::Error::new(
                                         std::io::ErrorKind::Other,
