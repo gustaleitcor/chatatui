@@ -8,9 +8,8 @@ use crud_bd::crud::message::Message;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    prelude::Color,
-    prelude::CrosstermBackend,
-    style::Style,
+    prelude::{Color, CrosstermBackend},
+    style::{Style, Stylize},
     text::Text,
     widgets::{Block, Borders, List, ListState, Paragraph},
     Frame,
@@ -30,6 +29,7 @@ pub struct Chat {
     pub messages: Vec<Message>,
     pub message: String,
     pub chat_id: Option<i32>,
+    pub available_rows: i64,
 }
 
 impl Chat {
@@ -39,6 +39,7 @@ impl Chat {
             chunks: Rc::new([]),
             messages: Vec::new(),
             message: String::new(),
+            available_rows: 0,
             chat_id: None,
         }
     }
@@ -74,7 +75,13 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
                 } else {
                     None
                 })
-                .with_offset(self.messages.len().saturating_sub(1)),
+                .with_offset(if let Some(FocusOn::Line(n, _)) = state.focus_on() {
+                    self.messages
+                        .len()
+                        .saturating_sub(self.available_rows as usize)
+                } else {
+                    0
+                }),
         );
 
         frame.render_widget(
@@ -200,6 +207,8 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
                 .as_ref(),
             )
             .split(frame.area());
+
+        self.available_rows = self.chunks[1].height.saturating_sub(1) as i64;
         Ok(())
     }
 

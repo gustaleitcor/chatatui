@@ -314,20 +314,6 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                         if !self.chats.is_empty() {
                             if n > 0 {
                                 app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
-                            } else if !(self.db_cursor == 0 && n == 0) {
-                                let chats = app
-                                    .database()
-                                    .prev_chats_page(
-                                        self.available_rows,
-                                        &mut self.db_cursor,
-                                        Some(self.filter.title.clone()),
-                                        Some(self.filter.id.clone()),
-                                    )
-                                    .unwrap();
-
-                                self.chats = chats;
-                                app.state_mut()
-                                    .set_focus_on(Some(FocusOn::Line(self.chats.len() - 1, 1)));
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
@@ -466,19 +452,6 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                         if !self.chats.is_empty() {
                             if n > 0 {
                                 app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 1)));
-                            } else if !(self.db_cursor == 0 && n == 0) {
-                                let chats = app
-                                    .database()
-                                    .prev_chats_page(
-                                        self.available_rows,
-                                        &mut self.db_cursor,
-                                        Some(self.filter.title.clone()),
-                                        Some(self.filter.id.clone()),
-                                    )
-                                    .unwrap();
-                                self.chats = chats;
-                                app.state_mut()
-                                    .set_focus_on(Some(FocusOn::Line(self.chats.len() - 1, 1)));
                             }
                         } else {
                             app.state_mut().set_focus_on(None);
