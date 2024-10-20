@@ -13,9 +13,17 @@ diesel::table! {
     messages (id) {
         id -> Int4,
         content -> Text,
-        chat_id -> Int4,
-        user_id -> Nullable<Int4>,
+        participant_id -> Int4,
         date -> Timestamp,
+    }
+}
+
+diesel::table! {
+    participants (id) {
+        id -> Int4,
+        chat_id -> Int4,
+        user_id -> Int4,
+        is_admin -> Bool,
     }
 }
 
@@ -28,11 +36,8 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(messages -> chats (chat_id));
-diesel::joinable!(messages -> users (user_id));
+diesel::joinable!(messages -> participants (participant_id));
+diesel::joinable!(participants -> chats (chat_id));
+diesel::joinable!(participants -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    chats,
-    messages,
-    users,
-);
+diesel::allow_tables_to_appear_in_same_query!(chats, messages, participants, users,);

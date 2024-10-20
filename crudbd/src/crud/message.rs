@@ -1,8 +1,8 @@
-use crate::schema;
 use diesel::prelude::*;
 
-use self::schema::messages::dsl::*;
 use crate::schema::messages;
+use crate::schema::messages::dsl::*;
+use crate::schema::participants::dsl as participant_dsl;
 use chrono::{NaiveDate, NaiveDateTime};
 use diesel::{Insertable, Queryable};
 
@@ -10,8 +10,7 @@ use diesel::{Insertable, Queryable};
 pub struct Message {
     pub id: i32,
     pub content: String,
-    pub chat_id: i32,
-    pub user_id: Option<i32>,
+    pub participant_id: i32,
     pub date: NaiveDateTime,
 }
 
@@ -19,27 +18,34 @@ pub struct Message {
 #[diesel(table_name = messages)]
 struct NewMessage<'a> {
     pub content: &'a str,
-    pub user_id: i32,
-    pub chat_id: i32,
+    pub participant_id: i32,
     pub date: Option<NaiveDateTime>,
 }
 
 pub fn create_message(
     conn: &mut PgConnection,
     cont: &str,
-    id_user: i32,
-    id_chat: i32,
+    id_participant: i32,
     time: Option<NaiveDateTime>,
 ) -> QueryResult<Message> {
     let new_message = NewMessage {
         content: cont,
-        user_id: id_user,
-        chat_id: id_chat,
+        participant_id: id_participant,
         date: time,
     };
 
     diesel::insert_into(messages)
         .values(&new_message)
+        .get_result(conn)
+}
+
+pub fn update_message_content(
+    conn: &mut PgConnection,
+    message_id: i32,
+    new_content: &str,
+) -> QueryResult<Message> {
+    diesel::update(messages.find(message_id))
+        .set(content.eq(new_content))
         .get_result(conn)
 }
 
@@ -59,13 +65,18 @@ pub fn get_messages_with_pagination(
         query = query.filter(id.eq(filter_msg_id));
     }
 
+    let mut participants_query = participant_dsl::participants
+        .into_boxed()
+        .select(participant_dsl::id);
     if let Some(filter_user_id) = filter_user_id {
-        query = query.filter(user_id.eq(filter_user_id));
+        participants_query = participants_query.filter(participant_dsl::user_id.eq(filter_user_id));
     }
 
     if let Some(filter_chat_id) = filter_chat_id {
-        query = query.filter(chat_id.eq(filter_chat_id));
+        participants_query = participants_query.filter(participant_dsl::chat_id.eq(filter_chat_id));
     }
+    let filtered_participants_id: Vec<i32> = participants_query.load(conn)?;
+    query = query.filter(participant_id.eq_any(filtered_participants_id));
 
     if let Some(filter_msg_date) = filter_msg_date {
         let day_begin: NaiveDateTime = filter_msg_date.and_hms_opt(0, 0, 0).unwrap();
@@ -82,12 +93,20 @@ pub fn get_message_by_id(conn: &mut PgConnection, id_message: i32) -> QueryResul
 
 // maybe not needed anymore
 pub fn get_messages_by_user_id(conn: &mut PgConnection, id_user: i32) -> QueryResult<Vec<Message>> {
-    messages.filter(user_id.eq(id_user)).load::<Message>(conn)
+    messages
+        .inner_join(participant_dsl::participants.on(participant_dsl::id.eq(id)))
+        .filter(participant_dsl::user_id.eq(id_user))
+        .select((id, content, participant_id, date))
+        .load::<Message>(conn)
 }
 
 // maybe not needed anymore
 pub fn get_messages_by_chat_id(conn: &mut PgConnection, id_chat: i32) -> QueryResult<Vec<Message>> {
-    messages.filter(chat_id.eq(id_chat)).load::<Message>(conn)
+    messages
+        .inner_join(participant_dsl::participants.on(participant_dsl::id.eq(id)))
+        .filter(participant_dsl::chat_id.eq(id_chat))
+        .select((id, content, participant_id, date))
+        .load::<Message>(conn)
 }
 
 // maybe not needed anymore
