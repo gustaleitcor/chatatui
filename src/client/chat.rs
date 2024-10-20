@@ -25,16 +25,16 @@ use crate::{
 
 use crate::page::Page;
 
-pub struct ClientChats {
+pub struct Chat {
     pub chunks: Rc<[Rect]>,
     pub messages: Vec<Message>,
     pub message: String,
 }
 
-impl ClientChats {
+impl Chat {
     #[allow(dead_code)]
-    pub fn new() -> ClientChats {
-        ClientChats {
+    pub fn new() -> Chat {
+        Chat {
             chunks: Rc::new([]),
             messages: Vec::new(),
             message: String::new(),
@@ -42,7 +42,7 @@ impl ClientChats {
     }
 }
 
-impl Page<CrosstermBackend<Stdout>> for ClientChats {
+impl Page<CrosstermBackend<Stdout>> for Chat {
     fn render(&self, frame: &mut Frame, state: &mut State) -> Result<()> {
         frame.render_widget(
             Paragraph::new("Chat")
@@ -53,16 +53,20 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
 
         frame.render_stateful_widget(
             List::new(self.messages.iter().map(|m| Text::raw(m.content.clone())))
-                .scroll_padding(1)
+                .scroll_padding(self.messages.len() / 2)
                 .highlight_symbol(" >> "),
             self.chunks[1],
             &mut ListState::default()
                 .with_selected(if let Some(FocusOn::Line(n, _)) = state.focus_on() {
-                    Some(*n)
+                    if *n == 0 {
+                        None
+                    } else {
+                        Some(self.messages.len().saturating_sub(*n))
+                    }
                 } else {
                     None
                 })
-                .with_offset(20),
+                .with_offset(self.messages.len().saturating_sub(1)),
         );
 
         frame.render_widget(
@@ -94,7 +98,6 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
             CursorMode::View(_) => match key.code {
                 KeyCode::Char('q') => app.state_mut().goto_exit(),
                 KeyCode::Tab => app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0))),
-
                 KeyCode::Up => match app.state().focus_on().clone() {
                     Some(FocusOn::Line(0, _)) => app
                         .state_mut()
@@ -112,7 +115,7 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                         if n <= 1 {
                             app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0)))
                         } else {
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(n + 1, 0)));
+                            app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 0)));
                         }
                     }
                 }
@@ -155,6 +158,16 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                     }
                     _ => {}
                 },
+
+                KeyCode::Down => {
+                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                        if n <= 1 {
+                            app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0)))
+                        } else {
+                            app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 0)));
+                        }
+                    }
+                }
 
                 _ => {}
             },

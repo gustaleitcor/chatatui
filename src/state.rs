@@ -15,7 +15,7 @@ pub enum CurrentScreen {
     Users,
     Messages,
     AdminChats,
-    ClientChats,
+    Chat,
     Exit,
 }
 
@@ -33,7 +33,7 @@ impl State {
     pub fn new() -> State {
         State {
             current_event: Arc::new(Mutex::new(None)),
-            current_screen: CurrentScreen::Register,
+            current_screen: CurrentScreen::Chat,
             cursor_mode: CursorMode::View('x'),
             focus_on: None,
             error: None,
@@ -82,8 +82,8 @@ impl State {
         self.screen_has_changed = true;
     }
 
-    pub fn goto_client_chats(&mut self) {
-        self.current_screen = CurrentScreen::ClientChats;
+    pub fn goto_chat(&mut self) {
+        self.current_screen = CurrentScreen::Chat;
         self.screen_has_changed = true;
     }
 

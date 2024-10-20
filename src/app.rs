@@ -16,7 +16,7 @@ use ratatui::{
 
 use crate::{
     admin::{chats::AdminChats, menu::Menu, messages::Messages, users::Users},
-    client::chat::ClientChats,
+    client::chat::Chat,
     common::{login::Login, register::Register},
     database::Database,
     state::State,
@@ -66,7 +66,7 @@ impl App {
         let mut messages = Messages::new();
         let mut login = Login::new();
         let mut register = Register::new();
-        let mut client_chats = ClientChats::new();
+        let mut client_chats = Chat::new();
         // self.database().load_users(1000);
         // self.database().load_chats(50);
         // self.database().load_messages(500);
