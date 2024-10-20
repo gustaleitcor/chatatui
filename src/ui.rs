@@ -49,7 +49,10 @@ pub fn ui(
         CurrentScreen::Messages => messages.run(frame, app).unwrap(),
         CurrentScreen::AdminChats => admin_chats.run(frame, app).unwrap(),
         CurrentScreen::ClientChats => client_chats.run(frame, app).unwrap(),
-        CurrentScreen::Chat => chat.run(frame, app).unwrap(),
+        CurrentScreen::Chat(chat_id) => {
+            chat.set_chat_id(*chat_id);
+            chat.run(frame, app).unwrap()
+        }
         CurrentScreen::Login => login.run(frame, app).unwrap(),
         CurrentScreen::Register => register.run(frame, app).unwrap(),
         CurrentScreen::Exit => {}

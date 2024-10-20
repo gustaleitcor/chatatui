@@ -3,7 +3,7 @@ use crud_bd::crud::{
     chat::Chat,
     establish_connection,
     message::Message,
-    participants::get_participants_by_chat_and_user,
+    participants::{get_participants_by_chat_and_user, Participant},
     user::{self, User},
 };
 use diesel::{result::Error, PgConnection, QueryResult};
@@ -354,6 +354,7 @@ impl Database {
         crud_bd::crud::populate_message(&mut self.pg_conn, limit);
     }
 
+    #[allow(dead_code)]
     pub fn get_user_id_by_participant_id(&mut self, part_id: i32) -> QueryResult<i32> {
         let participant =
             crud_bd::crud::participants::get_participant_by_id(&mut self.pg_conn, part_id)?;
@@ -366,5 +367,17 @@ impl Database {
         password: &str,
     ) -> QueryResult<Option<user::User>> {
         crud_bd::crud::user::user_authenticate(&mut self.pg_conn, username, password)
+    }
+
+    pub fn get_user_chats(&mut self, user_id: i32) -> QueryResult<Vec<Chat>> {
+        crud_bd::crud::chat::get_chats_of_user(&mut self.pg_conn, user_id)
+    }
+
+    pub fn get_chat_messages(&mut self, chat_id: i32) -> QueryResult<Vec<Message>> {
+        crud_bd::crud::message::get_messages_from_chat(&mut self.pg_conn, chat_id)
+    }
+
+    pub fn add_to_chat(&mut self, user_id: i32, chat_id: i32) -> QueryResult<Participant> {
+        crud_bd::crud::participants::create_participant(&mut self.pg_conn, chat_id, user_id, true)
     }
 }

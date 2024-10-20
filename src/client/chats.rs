@@ -278,7 +278,7 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
         match app.state().cursor_mode() {
             CursorMode::View('x') => match key.code {
                 KeyCode::Char('q') => {
-                    app.state_mut().goto_menu();
+                    app.state_mut().goto_login();
                 }
                 KeyCode::Down => {
                     if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
@@ -332,6 +332,13 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                         } else {
                             app.state_mut().set_focus_on(None);
                         }
+                    }
+                }
+
+                KeyCode::Enter => {
+                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                        let chat = self.chats.get(n).unwrap();
+                        app.state_mut().goto_chat(chat.id);
                     }
                 }
 
@@ -422,7 +429,7 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
 
             CursorMode::Edit('x') => match key.code {
                 KeyCode::Char('q') => {
-                    app.state_mut().goto_menu();
+                    app.state_mut().goto_login();
                 }
 
                 KeyCode::Down => {
@@ -479,26 +486,6 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                     }
                 }
 
-                KeyCode::Char('d') => {
-                    if !self.chats.is_empty() {
-                        if let Some(FocusOn::Line(row, _)) = app.state().focus_on() {
-                            if self.chats.get(*row).is_some() {
-                                app.state_mut().set_cursor_mode(CursorMode::Edit('d'));
-                            }
-                        }
-                    }
-                }
-
-                KeyCode::Char('u') => {
-                    if !self.chats.is_empty() {
-                        if let Some(FocusOn::Line(row, _)) = app.state().focus_on() {
-                            if self.chats.get(*row).is_some() {
-                                app.state_mut().set_cursor_mode(CursorMode::Edit('u'));
-                            }
-                        }
-                    }
-                }
-
                 KeyCode::Char('c') => {
                     app.state_mut().set_cursor_mode(CursorMode::Edit('c'));
                     self.chats.push(Chat {
@@ -513,164 +500,6 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                 _ => {}
             },
 
-            CursorMode::Edit('d') => {
-                if key.code == KeyCode::Char('y') {
-                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
-                        if !self.chats.is_empty() {
-                            let chat = self.chats.get(n).unwrap();
-                            let chat_id = chat.id.to_owned();
-                            match app.database().delete_chat(chat_id) {
-                                Ok(_) => {
-                                    self.chats.remove(n);
-                                    self.chats = app
-                                        .database()
-                                        .fetch_chats(
-                                            self.available_rows,
-                                            self.db_cursor,
-                                            Some(self.filter.title.clone()),
-                                            Some(self.filter.id.clone()),
-                                        )
-                                        .unwrap();
-                                    app.state_mut()
-                                        .set_focus_on(Some(FocusOn::Line(n.saturating_sub(1), 1)));
-                                    app.state_mut()
-                                        .set_prompt_message(Some(Ok("Chat deleted".to_string())))
-                                }
-
-                                Err(err) => app.state_mut().set_prompt_message(Some(Err(
-                                    std::io::Error::new(
-                                        std::io::ErrorKind::Other,
-                                        format!("Failed to delete chat. {:?}", err),
-                                    ),
-                                ))),
-                            }
-                        }
-                    }
-
-                    app.state_mut().set_cursor_mode(CursorMode::Edit('x'));
-                }
-            }
-
-            CursorMode::Edit('u') => {
-                if let Some(FocusOn::Line(row, col)) = app.state().focus_on().clone() {
-                    match key.code {
-                        KeyCode::Enter => {
-                            if let Some(chat) = self.chats.get_mut(row) {
-                                let chat_id = &chat.id.to_owned();
-                                let chat_title = &chat.title.to_owned();
-                                let chat_is_public = chat.is_public;
-
-                                // TODO: handle error
-                                match app.database().update_chat_title(*chat_id, chat_title) {
-                                    Ok(_) => app
-                                        .state_mut()
-                                        .set_prompt_message(Some(Ok("Chat created".to_string()))),
-                                    Err(err) => {
-                                        self.chats = app
-                                            .database()
-                                            .fetch_chats(
-                                                self.available_rows,
-                                                self.db_cursor,
-                                                Some(self.filter.title.clone()),
-                                                Some(self.filter.id.clone()),
-                                            )
-                                            .unwrap();
-                                        app.state_mut().set_prompt_message(Some(Err(
-                                            std::io::Error::new(
-                                                std::io::ErrorKind::Other,
-                                                format!(
-                                                    "Failed to set chat title. {:?}",
-                                                    err.to_string()
-                                                ),
-                                            ),
-                                        )));
-                                    }
-                                }
-
-                                // TODO: handle errors:
-                                match app.database().update_chat_privacy(*chat_id, chat_is_public) {
-                                    Ok(_) => app
-                                        .state_mut()
-                                        .set_prompt_message(Some(Ok("Chat updated".to_string()))),
-                                    Err(err) => {
-                                        self.chats = app
-                                            .database()
-                                            .fetch_chats(
-                                                self.available_rows,
-                                                self.db_cursor,
-                                                Some(self.filter.title.clone()),
-                                                Some(self.filter.id.clone()),
-                                            )
-                                            .unwrap();
-                                        app.state_mut().set_prompt_message(Some(Err(
-                                            std::io::Error::new(
-                                                std::io::ErrorKind::Other,
-                                                format!(
-                                                    "Failed to update chat privacy. {:?}",
-                                                    err,
-                                                ),
-                                            ),
-                                        )));
-                                        // return;
-                                    }
-                                }
-                            }
-
-                            app.state_mut().toggle_cursor_mode();
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(row, 1)));
-                        }
-
-                        KeyCode::Char(c) => {
-                            if let Some(chat) = self.chats.get_mut(row) {
-                                if col == 1 {
-                                    chat.title.push(c);
-                                }
-                            }
-                        }
-
-                        KeyCode::Backspace => {
-                            if let Some(user) = self.chats.get_mut(row) {
-                                if col == 1 {
-                                    user.title.pop();
-                                }
-                            }
-                        }
-
-                        KeyCode::Left => {
-                            if col > 1 {
-                                app.state_mut()
-                                    .set_focus_on(Some(FocusOn::Line(row, col - 1)));
-                            }
-                        }
-
-                        KeyCode::Right => {
-                            if col < 2 {
-                                app.state_mut()
-                                    .set_focus_on(Some(FocusOn::Line(row, col + 1)));
-                            }
-                        }
-
-                        KeyCode::Up => {
-                            if let Some(user) = self.chats.get_mut(row) {
-                                if col == 2 {
-                                    user.is_public = !user.is_public;
-                                }
-                            }
-                        }
-
-                        KeyCode::Down => {
-                            if let Some(user) = self.chats.get_mut(row) {
-                                if col == 2 {
-                                    user.is_public = !user.is_public;
-                                }
-                            }
-                        }
-
-                        _ => (),
-                    }
-                }
-            }
-
             CursorMode::Edit('c') => {
                 if let Some(FocusOn::Line(row, col)) = app.state().focus_on().clone() {
                     match key.code {
@@ -680,9 +509,19 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                                 .database()
                                 .create_chat(&self.new_chat.title, self.new_chat.is_public)
                             {
-                                Ok(_) => {
-                                    app.state_mut()
-                                        .set_prompt_message(Some(Ok("Chat created".to_string())));
+                                Ok(chat) => {
+                                    let user_id = app.state().user().id;
+                                    match app.database().add_to_chat(user_id, chat.id) {
+                                        Ok(_) => app.state_mut().set_prompt_message(Some(Ok(
+                                            "Chat created".to_string(),
+                                        ))),
+                                        Err(err) => app.state_mut().set_prompt_message(Some(Err(
+                                            std::io::Error::new(
+                                                std::io::ErrorKind::Other,
+                                                format!("Failed to add user to chat. {:?}", err),
+                                            ),
+                                        ))),
+                                    }
                                 }
 
                                 Err(err) => app.state_mut().set_prompt_message(Some(Err(
@@ -696,15 +535,8 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                             app.state_mut().set_cursor_mode(CursorMode::Edit('x'));
                             app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
                             // TODO: This can lead to errors
-                            self.chats = app
-                                .database()
-                                .fetch_chats(
-                                    self.available_rows,
-                                    self.db_cursor,
-                                    Some(self.filter.title.clone()),
-                                    Some(self.filter.id.clone()),
-                                )
-                                .unwrap();
+                            let user_id = app.state().user().id;
+                            self.chats = app.database().get_user_chats(user_id).unwrap();
                             self.new_chat.title.clear();
                             self.new_chat.is_public = false;
                         }
@@ -775,12 +607,8 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
             return Ok(());
         }
 
-        self.chats = match app.database().fetch_chats(
-            self.available_rows,
-            self.db_cursor,
-            Some(self.filter.title.to_owned()),
-            Some(self.filter.id.to_owned()),
-        ) {
+        let user_id = app.state().user().id;
+        self.chats = match app.database().get_user_chats(user_id) {
             Ok(chats) => chats,
             Err(err) => {
                 app.state_mut()
@@ -817,12 +645,8 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
     }
 
     fn setup(&mut self, app: &mut App) -> Result<()> {
-        self.chats = match app.database().fetch_chats(
-            self.available_rows,
-            self.db_cursor,
-            Some(self.filter.title.clone()),
-            Some(self.filter.id.clone()),
-        ) {
+        let user_id = app.state().user().id;
+        self.chats = match app.database().get_user_chats(user_id) {
             Ok(chats) => chats,
             Err(err) => {
                 app.state_mut()

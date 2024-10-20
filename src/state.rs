@@ -17,7 +17,7 @@ pub enum CurrentScreen {
     Messages,
     AdminChats,
     ClientChats,
-    Chat,
+    Chat(i32),
     Exit,
 }
 
@@ -81,6 +81,7 @@ impl State {
     }
 
     pub fn goto_login(&mut self) {
+        self.logout_user();
         self.current_screen = CurrentScreen::Login;
         self.screen_has_changed = true;
     }
@@ -90,14 +91,22 @@ impl State {
         self.screen_has_changed = true;
     }
 
-    pub fn goto_chat(&mut self) {
-        self.current_screen = CurrentScreen::Chat;
+    pub fn goto_chat(&mut self, chat_id: i32) {
+        self.current_screen = CurrentScreen::Chat(chat_id);
         self.screen_has_changed = true;
     }
 
     pub fn goto_client_chats(&mut self) {
         self.current_screen = CurrentScreen::ClientChats;
         self.screen_has_changed = true;
+    }
+
+    pub fn logout_user(&mut self) {
+        self.user = user::User {
+            id: -1,
+            username: String::new(),
+            password: String::new(),
+        };
     }
 
     pub fn has_screen_changed(&self) -> bool {

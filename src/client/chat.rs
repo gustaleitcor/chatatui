@@ -19,7 +19,7 @@ use ratatui::{
 use std::cmp::min;
 
 use crate::{
-    app::{App, CursorMode, FocusOn},
+    app::{App, FocusOn},
     state::State,
 };
 
@@ -41,6 +41,12 @@ impl Chat {
             message: String::new(),
             chat_id: None,
         }
+    }
+}
+
+impl Chat {
+    pub fn set_chat_id(&mut self, chat_id: i32) {
+        self.chat_id = Some(chat_id);
     }
 }
 
@@ -96,114 +102,86 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
     }
 
     fn handle_input(&mut self, app: &mut App, key: &KeyEvent) -> Result<()> {
-        match &app.state().cursor_mode() {
-            CursorMode::View(_) => match key.code {
-                KeyCode::Char('q') => app.state_mut().goto_exit(),
-                KeyCode::Tab => app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0))),
-                KeyCode::Up => match app.state().focus_on().clone() {
-                    Some(FocusOn::Line(0, _)) => app
-                        .state_mut()
-                        .set_focus_on(Some(FocusOn::Line(min(1, self.messages.len()), 0))),
-                    Some(FocusOn::Line(n, _)) => {
-                        if n < self.messages.len() {
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(n + 1, 0)))
-                        }
-                    }
-                    _ => {}
-                },
-
-                KeyCode::Down => {
-                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
-                        if n <= 1 {
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0)))
-                        } else {
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 0)));
-                        }
+        match key.code {
+            KeyCode::Esc => app.state_mut().goto_client_chats(),
+            KeyCode::Tab => app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0))),
+            KeyCode::Up => match app.state().focus_on().clone() {
+                Some(FocusOn::Line(0, _)) => app
+                    .state_mut()
+                    .set_focus_on(Some(FocusOn::Line(min(1, self.messages.len()), 0))),
+                Some(FocusOn::Line(n, _)) => {
+                    if n < self.messages.len() {
+                        app.state_mut().set_focus_on(Some(FocusOn::Line(n + 1, 0)))
                     }
                 }
-
                 _ => {}
             },
 
-            CursorMode::Edit(_) => match key.code {
-                KeyCode::Enter => {
-                    let user_id = app.state().user().id;
+            KeyCode::Down => {
+                if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
+                    if n <= 1 {
+                        app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0)))
+                    } else {
+                        app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 0)));
+                    }
+                }
+            }
 
-                    let chat_id = match self.chat_id {
-                        Some(id) => id,
-                        None => {
+            KeyCode::Enter => {
+                let user_id = app.state().user().id;
+
+                let chat_id = match self.chat_id {
+                    Some(id) => id,
+                    None => {
+                        app.state_mut()
+                            .set_prompt_message(Some(Err(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "Chat id is not set",
+                            ))));
+                        app.state_mut().goto_login();
+                        return Ok(());
+                    }
+                };
+
+                let msg =
+                    match app
+                        .database()
+                        .create_message(user_id, chat_id, self.message.as_str())
+                    {
+                        Ok(msg) => msg,
+                        Err(err) => {
                             app.state_mut()
                                 .set_prompt_message(Some(Err(std::io::Error::new(
                                     std::io::ErrorKind::Other,
-                                    "Chat id is not set",
+                                    format!("Failed to fetch chats. {:?}", err.to_string()),
                                 ))));
-                            app.state_mut().goto_login();
                             return Ok(());
                         }
                     };
 
-                    let msg =
-                        match app
-                            .database()
-                            .create_message(user_id, chat_id, self.message.as_str())
-                        {
-                            Ok(msg) => msg,
-                            Err(err) => {
-                                app.state_mut()
-                                    .set_prompt_message(Some(Err(std::io::Error::new(
-                                        std::io::ErrorKind::Other,
-                                        format!("Failed to fetch chats. {:?}", err.to_string()),
-                                    ))));
-                                return Ok(());
-                            }
-                        };
+                self.messages.push(Message {
+                    id: msg.id,
+                    participant_id: msg.participant_id,
+                    content: msg.content,
+                    date: msg.date,
+                });
 
-                    self.messages.push(Message {
-                        id: msg.id,
-                        participant_id: msg.participant_id,
-                        content: msg.content,
-                        date: msg.date,
-                    });
+                self.message.clear();
+            }
 
-                    self.message.clear();
-                }
-
-                KeyCode::Char(c) => match app.state().focus_on() {
-                    Some(FocusOn::Line(0, _)) => self.message.push(c),
-                    _ => app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0))),
-                },
-
-                KeyCode::Backspace => match app.state().focus_on() {
-                    Some(FocusOn::Line(0, _)) => {
-                        self.message.pop();
-                    }
-                    _ => app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0))),
-                },
-
-                KeyCode::Up => match app.state().focus_on().clone() {
-                    Some(FocusOn::Line(0, _)) => app
-                        .state_mut()
-                        .set_focus_on(Some(FocusOn::Line(min(1, self.messages.len()), 0))),
-                    Some(FocusOn::Line(n, _)) => {
-                        if n < self.messages.len() {
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(n + 1, 0)))
-                        }
-                    }
-                    _ => {}
-                },
-
-                KeyCode::Down => {
-                    if let Some(FocusOn::Line(n, _)) = app.state().focus_on().clone() {
-                        if n <= 1 {
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0)))
-                        } else {
-                            app.state_mut().set_focus_on(Some(FocusOn::Line(n - 1, 0)));
-                        }
-                    }
-                }
-
-                _ => {}
+            KeyCode::Char(c) => match app.state().focus_on() {
+                Some(FocusOn::Line(0, _)) => self.message.push(c),
+                _ => app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0))),
             },
+
+            KeyCode::Backspace => match app.state().focus_on() {
+                Some(FocusOn::Line(0, _)) => {
+                    self.message.pop();
+                }
+                _ => app.state_mut().set_focus_on(Some(FocusOn::Line(0, 0))),
+            },
+
+            _ => {}
         }
 
         Ok(())
@@ -233,8 +211,18 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
         Ok(())
     }
 
-    #[allow(unused_variables)]
     fn setup(&mut self, app: &mut App) -> Result<()> {
+        self.messages = match app.database().get_chat_messages(self.chat_id.unwrap()) {
+            Ok(messages) => messages,
+            Err(err) => {
+                app.state_mut()
+                    .set_prompt_message(Some(Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to fetch messages. {:?}", err.to_string()),
+                    ))));
+                return Ok(());
+            }
+        };
         Ok(())
     }
 }

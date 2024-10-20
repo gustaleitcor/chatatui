@@ -3,7 +3,6 @@ use std::{
     rc::Rc,
 };
 
-use crud_bd::crud::user;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Alignment, Constraint, Direction, Flex, Layout, Rect},
@@ -17,7 +16,6 @@ use ratatui::{
 
 use crate::{
     app::{App, CursorMode, FocusOn},
-    database,
     state::State,
 };
 
@@ -181,8 +179,12 @@ impl Page<CrosstermBackend<Stdout>> for Login {
 
                     match response {
                         Ok(Some(user)) => {
+                            if user.username == "admin" {
+                                app.state_mut().goto_menu();
+                            } else {
+                                app.state_mut().goto_client_chats();
+                            }
                             app.state_mut().set_user(user);
-                            app.state_mut().goto_client_chats();
                             app.state_mut().set_prompt_message(None);
                         }
                         Ok(None) => {

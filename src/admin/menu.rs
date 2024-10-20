@@ -72,7 +72,7 @@ impl Page<CrosstermBackend<Stdout>> for Menu {
     fn handle_input(&mut self, app: &mut App, key: &KeyEvent) -> Result<()> {
         let state = app.state_mut();
         match key.code {
-            KeyCode::Char('q') => state.goto_exit(),
+            KeyCode::Char('q') => state.goto_login(),
 
             KeyCode::Up => {
                 if let Some(FocusOn::Line(n, _)) = state.focus_on() {

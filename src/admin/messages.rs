@@ -16,8 +16,7 @@ use ratatui::{
 };
 
 use crate::{
-    app::{self, App, CursorMode, FocusOn},
-    database,
+    app::{App, CursorMode, FocusOn},
     state::State,
 };
 
@@ -34,6 +33,7 @@ struct Filter {
 struct MessageStr {
     id: i32,
     content: String,
+    #[allow(dead_code)]
     participant_id: String,
     chat_id: String,
     user_id: String,
