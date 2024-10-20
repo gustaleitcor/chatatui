@@ -49,6 +49,17 @@ pub fn update_message_content(
         .get_result(conn)
 }
 
+pub fn get_messages_from_chat(conn: &mut PgConnection, chat_id: i32) -> QueryResult<Vec<Message>> {
+    use crate::schema::participants;
+    use crate::schema::participants::dsl as participants_dsl;
+
+    messages
+        .inner_join(participants_dsl::participants.on(participants::id.eq(participant_id)))
+        .filter(participants::chat_id.eq(chat_id))
+        .select((id, content, participant_id, date))
+        .load(conn)
+}
+
 // general purpose function
 pub fn get_messages_with_pagination(
     conn: &mut PgConnection,
