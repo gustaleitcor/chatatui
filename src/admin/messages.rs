@@ -16,7 +16,8 @@ use ratatui::{
 };
 
 use crate::{
-    app::{App, CursorMode, FocusOn},
+    app::{self, App, CursorMode, FocusOn},
+    database,
     state::State,
 };
 
@@ -33,6 +34,7 @@ struct Filter {
 struct MessageStr {
     id: i32,
     content: String,
+    participant_id: String,
     chat_id: String,
     user_id: String,
     date: NaiveDateTime,
@@ -56,6 +58,7 @@ impl Messages {
             new_message: MessageStr {
                 id: 0,
                 content: String::new(),
+                participant_id: String::new(),
                 chat_id: String::new(),
                 user_id: String::new(),
                 date: Utc::now().naive_utc(),
@@ -76,22 +79,13 @@ impl Messages {
 impl From<Message> for MessageStr {
     fn from(s: Message) -> MessageStr {
         // if user_id is none set to "NULL" else set to user_id in string format.
-
-        match s.user_id {
-            Some(user_id) => MessageStr {
-                id: s.id,
-                content: s.content,
-                chat_id: s.chat_id.to_string(),
-                user_id: user_id.to_string(),
-                date: s.date,
-            },
-            None => MessageStr {
-                id: s.id,
-                content: s.content,
-                chat_id: s.chat_id.to_string(),
-                user_id: "NULL".to_string(),
-                date: s.date,
-            },
+        MessageStr {
+            id: s.id,
+            content: s.content,
+            participant_id: s.participant_id.to_string(),
+            user_id: String::new(),
+            chat_id: String::new(),
+            date: s.date,
         }
     }
 }

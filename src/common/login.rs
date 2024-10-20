@@ -17,6 +17,7 @@ use ratatui::{
 
 use crate::{
     app::{App, CursorMode, FocusOn},
+    database,
     state::State,
 };
 
@@ -174,30 +175,27 @@ impl Page<CrosstermBackend<Stdout>> for Login {
             },
             CursorMode::Edit(_) => match key.code {
                 KeyCode::Enter => {
-                    // TODO AUTH USER
-                    let response: Result<user::User> = Ok(user::User {
-                        id: 0,
-                        username: "admin".to_string(),
-                        password: "admin".to_string(),
-                    });
+                    let response = app
+                        .database()
+                        .authenticate_user(&self.login, &self.password);
+
                     match response {
-                        Ok(user) => {
-                            if self.login == user.username && self.password == user.password {
-                                app.state_mut().goto_chat();
-                                app.state_mut().set_prompt_message(None);
-                            } else {
-                                app.state_mut()
-                                    .set_prompt_message(Some(Err(std::io::Error::new(
-                                        std::io::ErrorKind::Other,
-                                        "Invalid password.",
-                                    ))));
-                            }
+                        Ok(true) => {
+                            app.state_mut().goto_chat();
+                            app.state_mut().set_prompt_message(None);
+                        }
+                        Ok(false) => {
+                            app.state_mut()
+                                .set_prompt_message(Some(Err(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    "Invalid username or password.",
+                                ))));
                         }
                         Err(_) => {
                             app.state_mut()
                                 .set_prompt_message(Some(Err(std::io::Error::new(
                                     std::io::ErrorKind::Other,
-                                    "Invalid username.",
+                                    "Failed to authenticate user.",
                                 ))));
                         }
                     }

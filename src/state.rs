@@ -4,6 +4,7 @@ use std::{
     time::Instant,
 };
 
+use crud_bd::crud::user;
 use ratatui::crossterm::event::{self, Event};
 
 use crate::app::{CursorMode, FocusOn};
@@ -20,6 +21,7 @@ pub enum CurrentScreen {
 }
 
 pub struct State {
+    user: user::User,
     current_event: Arc<Mutex<Option<Event>>>,
     current_screen: CurrentScreen,
     focus_on: Option<FocusOn>,
@@ -32,6 +34,11 @@ pub struct State {
 impl State {
     pub fn new() -> State {
         State {
+            user: user::User {
+                id: 0,
+                username: String::new(),
+                password: String::new(),
+            },
             current_event: Arc::new(Mutex::new(None)),
             current_screen: CurrentScreen::Chat,
             cursor_mode: CursorMode::View('x'),

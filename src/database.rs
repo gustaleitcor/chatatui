@@ -1,5 +1,8 @@
 use chrono::NaiveDate;
-use crud_bd::crud::{chat::Chat, establish_connection, message::Message, user::User};
+use crud_bd::crud::{
+    chat::Chat, establish_connection, message::Message,
+    participants::get_participants_by_chat_and_user, user::User,
+};
 use diesel::{result::Error, PgConnection, QueryResult};
 
 pub struct Database {
@@ -341,13 +344,12 @@ impl Database {
             Err(_) => return Err(Error::NotFound),
         };
 
-        crud_bd::crud::message::create_message(
-            &mut self.pg_conn,
-            message_text,
-            user_id,
-            chat_id,
-            None,
-        )
+        let part_id = match get_participants_by_chat_and_user(&mut self.pg_conn, user_id, chat_id) {
+            Ok(p) => p.id,
+            Err(_) => return Err(Error::NotFound),
+        };
+
+        crud_bd::crud::message::create_message(&mut self.pg_conn, message_text, part_id, None)
     }
 
     pub fn delete_message(&mut self, message_id: i32) -> QueryResult<Message> {
@@ -357,5 +359,15 @@ impl Database {
     #[allow(dead_code)]
     pub fn load_messages(&mut self, limit: usize) {
         crud_bd::crud::populate_message(&mut self.pg_conn, limit);
+    }
+
+    pub fn get_user_id_by_participant_id(&mut self, part_id: i32) -> QueryResult<i32> {
+        let participant =
+            crud_bd::crud::participants::get_participant_by_id(&mut self.pg_conn, part_id)?;
+        Ok(participant.user_id)
+    }
+
+    pub fn authenticate_user(&mut self, username: &str, password: &str) -> QueryResult<bool> {
+        crud_bd::crud::user::user_authenticate(&mut self.pg_conn, username, password)
     }
 }

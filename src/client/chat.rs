@@ -127,8 +127,7 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
                 KeyCode::Enter => {
                     self.messages.push(Message {
                         id: 0,
-                        user_id: Some(0),
-                        chat_id: 0,
+                        participant_id: 0,
                         content: self.message.clone(),
                         date: chrono::Local::now().naive_local(),
                     });
