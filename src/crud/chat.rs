@@ -1,8 +1,8 @@
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
-use crate::schema::chats;
 use crate::schema::chats::dsl::*;
+use crate::{crud::participants, schema::chats};
 use diesel::{Insertable, Queryable};
 
 #[derive(Queryable, Debug)]
@@ -48,6 +48,17 @@ pub fn create_chat(
 
 pub fn get_chat_by_id(conn: &mut PgConnection, chat_id: i32) -> QueryResult<Chat> {
     chats.find(chat_id).first(conn)
+}
+
+pub fn get_chats_of_user(conn: &mut PgConnection, user_id: i32) -> QueryResult<Vec<Chat>> {
+    use crate::schema::participants;
+    use crate::schema::participants::dsl as participants_dsl;
+
+    chats
+        .inner_join(participants_dsl::participants.on(participants::chat_id.eq(id)))
+        .filter(participants::user_id.eq(user_id))
+        .select((id, title, is_public))
+        .load(conn)
 }
 
 // general purpose function

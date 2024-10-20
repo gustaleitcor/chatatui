@@ -8,5 +8,7 @@ CREATE TABLE participants (
     FOREIGN KEY (chat_id) REFERENCES chats (id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users (id)
-        ON DELETE SET NULL ON UPDATE CASCADE
+        ON DELETE SET NULL ON UPDATE CASCADE,
+
+    UNIQUE (chat_id, user_id)
 );
