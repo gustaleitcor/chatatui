@@ -1,4 +1,6 @@
 use crate::schema;
+use bigdecimal::BigDecimal;
+use bigdecimal::ToPrimitive;
 use diesel::prelude::*;
 
 use self::schema::users::dsl::*;
@@ -10,6 +12,7 @@ pub struct User {
     pub id: i32,
     pub username: String,
     pub password: String,
+    pub bill: BigDecimal,
 }
 
 #[derive(Insertable, Debug)]
@@ -17,6 +20,7 @@ pub struct User {
 struct NewUser<'a> {
     pub username: &'a str,
     pub password: &'a str,
+    pub bill: BigDecimal,
 }
 
 pub fn create_user<'a>(
@@ -27,6 +31,7 @@ pub fn create_user<'a>(
     let new_user = NewUser {
         username: user_username,
         password: pswd,
+        bill: BigDecimal::from(0),
     };
 
     diesel::insert_into(users)
@@ -44,7 +49,8 @@ pub fn get_user_by_username(conn: &mut PgConnection, user_username: &str) -> Que
 }
 
 pub fn get_billing_by_user_id(conn: &mut PgConnection, user_id: i32) -> QueryResult<f32> {
-    users.select(bill).filter(id.eq(user_id)).first(conn)
+    let user_bill: BigDecimal = users.select(bill).filter(id.eq(user_id)).first(conn)?;
+    Ok(user_bill.to_f32().unwrap())
 }
 
 pub fn user_authenticate(
