@@ -380,4 +380,8 @@ impl Database {
     pub fn add_to_chat(&mut self, user_id: i32, chat_id: i32) -> QueryResult<Participant> {
         crud_bd::crud::participants::create_participant(&mut self.pg_conn, chat_id, user_id, true)
     }
+
+    pub fn get_user_billing(&mut self, user_id: i32) -> QueryResult<i32> {
+        crud_bd::crud::user::get_billing_by_user_id(&mut self.pg_conn, user_id)
+    }
 }

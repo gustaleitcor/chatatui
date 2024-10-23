@@ -16,6 +16,7 @@ use ratatui::{
 
 use crate::{
     app::{App, CursorMode, FocusOn},
+    database,
     state::State,
 };
 

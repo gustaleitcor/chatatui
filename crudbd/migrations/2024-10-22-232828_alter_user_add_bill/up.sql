@@ -1,3 +1,0 @@
--- Your SQL goes here
-ALTER TABLE users
-ADD COLUMN bill DECIMAL(10, 2) DEFAULT 0;
