@@ -64,8 +64,9 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                 Block::default()
                     .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
                     .title(format!(
-                        " Page: {} ",
+                        " Page: {} | Bill: {}",
                         self.db_cursor.checked_div(self.available_rows).unwrap_or(0),
+                        state.user().bill
                     )),
             ),
             self.chunks[0],
@@ -654,6 +655,9 @@ impl Page<CrosstermBackend<Stdout>> for ClientChats {
                 }
             }
         }
+
+        let billing = app.database().get_user_billing(user_id);
+        app.state_mut().set_billing(billing);
 
         Ok(())
     }

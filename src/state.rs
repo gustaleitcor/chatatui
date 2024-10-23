@@ -7,7 +7,7 @@ use std::{
 use crud_bd::crud::user;
 use ratatui::crossterm::event::{self, Event};
 
-use crate::app::{CursorMode, FocusOn};
+use crate::app::{self, CursorMode, FocusOn};
 
 pub enum CurrentScreen {
     Login,
@@ -183,5 +183,9 @@ impl State {
 
     pub fn user(&self) -> &user::User {
         &self.user
+    }
+
+    pub fn set_billing(&mut self, billing: f32) {
+        self.user.bill = billing;
     }
 }
