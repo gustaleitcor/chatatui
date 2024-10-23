@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::NaiveDate;
 use crud_bd::crud::{
     chat::Chat,
@@ -209,7 +211,7 @@ impl Database {
         user_id: Option<String>,
         chat_id: Option<String>,
         message_date: Option<String>,
-    ) -> QueryResult<Vec<Message>> {
+    ) -> QueryResult<(Vec<Message>, HashMap<i32, (i32, i32)>)> {
         let message_id = message_id
             .and_then(|e| {
                 if e.is_empty() {
@@ -262,7 +264,7 @@ impl Database {
             })
             .flatten();
 
-        crud_bd::crud::message::get_messages_with_pagination(
+        let messages = crud_bd::crud::message::get_messages_with_pagination(
             &mut self.pg_conn,
             cursor,
             limit,
@@ -270,7 +272,22 @@ impl Database {
             user_id,
             chat_id,
             message_date,
-        )
+        );
+
+        let mut participant_id_to_pair_chat_user_id = HashMap::new();
+
+        let messages = messages?;
+
+        for message in &messages {
+            let participant = self.get_participant_by_id(message.participant_id).unwrap();
+
+            participant_id_to_pair_chat_user_id.insert(
+                message.participant_id,
+                (participant.user_id, participant.chat_id),
+            );
+        }
+
+        Ok((messages, participant_id_to_pair_chat_user_id))
     }
 
     pub fn next_messages_page(
@@ -281,7 +298,7 @@ impl Database {
         user_id: Option<String>,
         chat_id: Option<String>,
         message_date: Option<String>,
-    ) -> QueryResult<Vec<Message>> {
+    ) -> QueryResult<(Vec<Message>, HashMap<i32, (i32, i32)>)> {
         *db_cursor = db_cursor.saturating_add(limit);
 
         let messages = self.fetch_messages(
@@ -293,7 +310,7 @@ impl Database {
             message_date,
         )?;
 
-        *db_cursor = *db_cursor + messages.len() as i64 - limit;
+        *db_cursor = *db_cursor + messages.0.len() as i64 - limit;
 
         Ok(messages)
     }
@@ -306,7 +323,7 @@ impl Database {
         user_id: Option<String>,
         chat_id: Option<String>,
         message_date: Option<String>,
-    ) -> QueryResult<Vec<Message>> {
+    ) -> QueryResult<(Vec<Message>, HashMap<i32, (i32, i32)>)> {
         if *db_cursor - limit < 0 {
             *db_cursor = 0;
         } else {
@@ -325,7 +342,7 @@ impl Database {
         if *db_cursor - limit < 0 {
             *db_cursor = 0;
         } else {
-            *db_cursor = *db_cursor - messages.len() as i64 + limit;
+            *db_cursor = *db_cursor - messages.0.len() as i64 + limit;
         }
 
         Ok(messages)
@@ -381,7 +398,15 @@ impl Database {
         crud_bd::crud::participants::create_participant(&mut self.pg_conn, chat_id, user_id, true)
     }
 
-    pub fn get_user_billing(&mut self, user_id: i32) -> QueryResult<i32> {
+    pub fn get_user_billing(&mut self, user_id: i32) -> QueryResult<f32> {
         crud_bd::crud::user::get_billing_by_user_id(&mut self.pg_conn, user_id)
+    }
+
+    pub fn get_user_by_id(&mut self, user_id: i32) -> QueryResult<user::User> {
+        crud_bd::crud::user::get_user_by_id(&mut self.pg_conn, user_id)
+    }
+
+    pub fn get_participant_by_id(&mut self, part_id: i32) -> QueryResult<Participant> {
+        crud_bd::crud::participants::get_participant_by_id(&mut self.pg_conn, part_id)
     }
 }

@@ -45,6 +45,7 @@ impl Users {
                 id: -1,
                 username: String::new(),
                 password: String::new(),
+                bill: 0.into(),
             },
             filter: Filter {
                 id: String::new(),
@@ -506,6 +507,7 @@ impl Page<CrosstermBackend<Stdout>> for Users {
                         id: -1,
                         username: "".to_string(),
                         password: "".to_string(),
+                        bill: 0.into(),
                     });
                     app.state_mut()
                         .set_focus_on(Some(FocusOn::Line(self.users.len() - 1, 1)));

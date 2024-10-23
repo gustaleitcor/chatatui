@@ -1,9 +1,11 @@
 use std::{
+    collections::HashMap,
     io::{Result, Stdout},
+    iter::Map,
     rc::Rc,
 };
 
-use crud_bd::crud::message::Message;
+use crud_bd::crud::{message::Message, user::User};
 
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent},
@@ -27,6 +29,7 @@ use crate::page::Page;
 pub struct Chat {
     pub chunks: Rc<[Rect]>,
     pub messages: Vec<Message>,
+    pub participant_id_to_user: HashMap<i32, User>,
     pub message: String,
     pub chat_id: Option<i32>,
     pub available_rows: i64,
@@ -38,6 +41,7 @@ impl Chat {
         Chat {
             chunks: Rc::new([]),
             messages: Vec::new(),
+            participant_id_to_user: HashMap::new(),
             message: String::new(),
             available_rows: 0,
             chat_id: None,
@@ -61,9 +65,23 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
         );
 
         frame.render_stateful_widget(
-            List::new(self.messages.iter().map(|m| Text::raw(m.content.clone())))
-                .scroll_padding(self.messages.len() / 2)
-                .highlight_symbol(" >> "),
+            List::new(self.messages.iter().map(|m| {
+                format!(
+                    "{}: {}",
+                    self.participant_id_to_user
+                        .get(&m.participant_id)
+                        .unwrap_or(&User {
+                            id: 0,
+                            bill: 0.into(),
+                            password: String::new(),
+                            username: String::new(),
+                        })
+                        .username,
+                    m.content
+                )
+            }))
+            .scroll_padding(self.messages.len() / 2)
+            .highlight_symbol(" >> "),
             self.chunks[1],
             &mut ListState::default()
                 .with_selected(if let Some(FocusOn::Line(n, _)) = state.focus_on() {
@@ -173,6 +191,16 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
                     date: msg.date,
                 });
 
+                self.participant_id_to_user.insert(
+                    msg.participant_id,
+                    User {
+                        id: msg.participant_id,
+                        bill: 0.into(),
+                        password: String::new(),
+                        username: app.state().user().username.clone(),
+                    },
+                );
+
                 self.message.clear();
             }
 
@@ -232,6 +260,35 @@ impl Page<CrosstermBackend<Stdout>> for Chat {
                 return Ok(());
             }
         };
+
+        self.messages.sort_by(|a, b| a.date.cmp(&b.date));
+
+        for msg in self.messages.iter() {
+            if self
+                .participant_id_to_user
+                .contains_key(&msg.participant_id)
+            {
+                continue;
+            }
+            let user_id = match app
+                .database()
+                .get_user_id_by_participant_id(msg.participant_id)
+            {
+                Ok(user) => user,
+                Err(err) => {
+                    app.state_mut()
+                        .set_prompt_message(Some(Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Failed to fetch user. {:?}", err.to_string()),
+                        ))));
+                    return Ok(());
+                }
+            };
+
+            let user = app.database().get_user_by_id(user_id).unwrap();
+
+            self.participant_id_to_user.insert(msg.participant_id, user);
+        }
         Ok(())
     }
 }

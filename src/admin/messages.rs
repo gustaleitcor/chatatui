@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{Result, Stdout},
     rc::Rc,
 };
@@ -34,7 +35,7 @@ struct MessageStr {
     id: i32,
     content: String,
     #[allow(dead_code)]
-    participant_id: String,
+    participant_id: i32,
     chat_id: String,
     user_id: String,
     date: NaiveDateTime,
@@ -45,6 +46,7 @@ pub struct Messages {
     db_cursor: i64,
     messages: Vec<MessageStr>,
     new_message: MessageStr,
+    participant_id_to_pair_chat_user_id: HashMap<i32, (i32, i32)>,
     filter: Filter,
     available_rows: i64,
 }
@@ -58,11 +60,12 @@ impl Messages {
             new_message: MessageStr {
                 id: 0,
                 content: String::new(),
-                participant_id: String::new(),
+                participant_id: 0,
                 chat_id: String::new(),
                 user_id: String::new(),
                 date: Utc::now().naive_utc(),
             },
+            participant_id_to_pair_chat_user_id: HashMap::new(),
 
             filter: Filter {
                 id: String::new(),
@@ -82,7 +85,7 @@ impl From<Message> for MessageStr {
         MessageStr {
             id: s.id,
             content: s.content,
-            participant_id: s.participant_id.to_string(),
+            participant_id: s.participant_id,
             user_id: String::new(),
             chat_id: String::new(),
             date: s.date,
@@ -234,8 +237,20 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
 
             let id = Cell::from(Text::from(format!("{}", data.id)));
             let content = Cell::from(Text::from(data.content.to_owned()));
-            let chat_id = Cell::from(Text::from(data.chat_id.to_owned()));
-            let user_id = Cell::from(Text::from(data.user_id.to_owned()));
+            let chat_id = Cell::from(Text::from(
+                self.participant_id_to_pair_chat_user_id
+                    .get(&data.participant_id)
+                    .unwrap_or(&(0, 0))
+                    .0
+                    .to_string(),
+            ));
+            let user_id = Cell::from(Text::from(
+                self.participant_id_to_pair_chat_user_id
+                    .get(&data.participant_id)
+                    .unwrap_or(&(0, 0))
+                    .1
+                    .to_string(),
+            ));
             let date = Cell::from(Text::from(data.date.to_string()));
 
             [id, content, chat_id, user_id, date]
@@ -362,9 +377,11 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     )
                                     .unwrap();
 
-                                if !messages.is_empty() {
+                                self.participant_id_to_pair_chat_user_id = messages.1;
+
+                                if !messages.0.is_empty() {
                                     self.messages =
-                                        messages.into_iter().map(|m| m.into()).collect();
+                                        messages.0.into_iter().map(|m| m.into()).collect();
                                     app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
                                 }
                             }
@@ -392,7 +409,9 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     )
                                     .unwrap();
 
-                                self.messages = chats.into_iter().map(|m| m.into()).collect();
+                                self.participant_id_to_pair_chat_user_id = chats.1;
+
+                                self.messages = chats.0.into_iter().map(|m| m.into()).collect();
                                 app.state_mut()
                                     .set_focus_on(Some(FocusOn::Line(self.messages.len() - 1, 1)));
                             }
@@ -440,7 +459,8 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
 
                             self.db_cursor = 0;
 
-                            self.messages = app
+                            let a;
+                            (a, self.participant_id_to_pair_chat_user_id) = app
                                 .database()
                                 .fetch_messages(
                                     self.available_rows,
@@ -450,10 +470,9 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     Some(self.filter.chat_id.clone()),
                                     Some(self.filter.message_date.clone()),
                                 )
-                                .unwrap()
-                                .into_iter()
-                                .map(|m| m.into())
-                                .collect();
+                                .unwrap();
+
+                            self.messages = a.into_iter().map(|m| m.into()).collect();
                         }
 
                         KeyCode::Backspace => {
@@ -483,7 +502,8 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
 
                             self.db_cursor = 0;
 
-                            self.messages = app
+                            let mut a;
+                            (a, self.participant_id_to_pair_chat_user_id) = app
                                 .database()
                                 .fetch_messages(
                                     self.available_rows,
@@ -493,10 +513,9 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     Some(self.filter.chat_id.clone()),
                                     Some(self.filter.message_date.clone()),
                                 )
-                                .unwrap()
-                                .into_iter()
-                                .map(|m| m.into())
-                                .collect();
+                                .unwrap();
+
+                            self.messages = a.into_iter().map(|m| m.into()).collect();
                         }
 
                         KeyCode::Right => {
@@ -546,8 +565,10 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     )
                                     .unwrap();
 
-                                if !chats.is_empty() {
-                                    self.messages = chats.into_iter().map(|m| m.into()).collect();
+                                self.participant_id_to_pair_chat_user_id = chats.1;
+
+                                if !chats.0.is_empty() {
+                                    self.messages = chats.0.into_iter().map(|m| m.into()).collect();
                                     app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
                                 }
                             }
@@ -573,10 +594,12 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                         Some(self.filter.chat_id.clone()),
                                         Some(self.filter.message_date.clone()),
                                     )
-                                    .unwrap()
-                                    .into_iter()
-                                    .map(|m| m.into())
-                                    .collect();
+                                    .unwrap();
+
+                                self.participant_id_to_pair_chat_user_id = chats.1;
+
+                                let chats = chats.0.into_iter().map(|m| m.into()).collect();
+
                                 self.messages = chats;
                                 app.state_mut()
                                     .set_focus_on(Some(FocusOn::Line(self.messages.len() - 1, 1)));
@@ -612,7 +635,7 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                         id: -1,
                         user_id: "".to_string(),
                         chat_id: "".to_string(),
-                        participant_id: "".to_string(),
+                        participant_id: 0,
                         content: "".to_string(),
                         date: Utc::now().naive_utc(),
                     });
@@ -632,7 +655,8 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                             match app.database().delete_message(message_id) {
                                 Ok(_) => {
                                     self.messages.remove(n);
-                                    self.messages = app
+                                    let mut a;
+                                    (a, self.participant_id_to_pair_chat_user_id) = app
                                         .database()
                                         .fetch_messages(
                                             self.available_rows,
@@ -642,10 +666,9 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                             Some(self.filter.chat_id.clone()),
                                             Some(self.filter.message_date.clone()),
                                         )
-                                        .unwrap()
-                                        .into_iter()
-                                        .map(|m| m.into())
-                                        .collect();
+                                        .unwrap();
+
+                                    self.messages = a.into_iter().map(|m| m.into()).collect();
                                     app.state_mut()
                                         .set_focus_on(Some(FocusOn::Line(n.saturating_sub(1), 1)));
                                     app.state_mut()
@@ -819,7 +842,8 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                             app.state_mut().set_cursor_mode(CursorMode::Edit('x'));
                             app.state_mut().set_focus_on(Some(FocusOn::Line(0, 1)));
                             // TODO: This can lead to errors
-                            self.messages = app
+                            let mut a;
+                            (a, self.participant_id_to_pair_chat_user_id) = app
                                 .database()
                                 .fetch_messages(
                                     self.available_rows,
@@ -829,10 +853,9 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
                                     Some(self.filter.chat_id.clone()),
                                     Some(self.filter.message_date.clone()),
                                 )
-                                .unwrap()
-                                .into_iter()
-                                .map(|m| m.into())
-                                .collect();
+                                .unwrap();
+
+                            self.messages = a.into_iter().map(|m| m.into()).collect();
                             self.new_message.content.clear();
                             self.new_message.chat_id.clear();
                             self.new_message.user_id.clear();
@@ -906,7 +929,10 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
             Some(self.filter.chat_id.clone()),
             Some(self.filter.message_date.clone()),
         ) {
-            Ok(messages) => messages.into_iter().map(|m| m.into()).collect(),
+            Ok(chats) => {
+                self.participant_id_to_pair_chat_user_id = chats.1;
+                chats.0.into_iter().map(|c| c.into()).collect()
+            }
             Err(err) => {
                 app.state_mut()
                     .set_prompt_message(Some(Err(std::io::Error::new(
@@ -950,7 +976,10 @@ impl Page<CrosstermBackend<Stdout>> for Messages {
             Some(self.filter.chat_id.clone()),
             Some(self.filter.message_date.clone()),
         ) {
-            Ok(chats) => chats.into_iter().map(|c| c.into()).collect(),
+            Ok(chats) => {
+                self.participant_id_to_pair_chat_user_id = chats.1;
+                chats.0.into_iter().map(|c| c.into()).collect()
+            }
             Err(err) => {
                 app.state_mut()
                     .set_prompt_message(Some(Err(std::io::Error::new(

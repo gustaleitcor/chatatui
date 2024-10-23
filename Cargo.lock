@@ -176,10 +176,12 @@ dependencies = [
 name = "crud_bd"
 version = "0.1.0"
 dependencies = [
+ "bigdecimal",
  "chrono",
  "diesel",
  "dotenvy",
  "fake",
+ "num-traits",
  "rand",
 ]
 
@@ -230,11 +232,15 @@ version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65e13bab2796f412722112327f3e575601a3e9cdcbe426f0d30dbf43f3f5dc71"
 dependencies = [
+ "bigdecimal",
  "bitflags",
  "byteorder",
  "chrono",
  "diesel_derives",
  "itoa",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
  "pq-sys",
 ]
 

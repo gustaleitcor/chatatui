@@ -4,6 +4,7 @@ use std::{
     time::Instant,
 };
 
+use bigdecimal::{BigDecimal, FromPrimitive};
 use crud_bd::crud::user;
 use ratatui::crossterm::event::{self, Event};
 
@@ -39,7 +40,7 @@ impl State {
                 id: 0,
                 username: String::new(),
                 password: String::new(),
-                bill: 0.0,
+                bill: BigDecimal::from(0),
             },
             current_event: Arc::new(Mutex::new(None)),
             current_screen: CurrentScreen::Login,
@@ -107,7 +108,7 @@ impl State {
             id: -1,
             username: String::new(),
             password: String::new(),
-            bill: 0.0,
+            bill: BigDecimal::from(0),
         };
     }
 
@@ -188,6 +189,6 @@ impl State {
     }
 
     pub fn set_billing(&mut self, billing: f32) {
-        self.user.bill = billing;
+        self.user.bill = BigDecimal::from_f32(billing).unwrap();
     }
 }
