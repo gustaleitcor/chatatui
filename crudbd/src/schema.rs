@@ -33,7 +33,7 @@ diesel::table! {
         #[max_length = 50]
         username -> Varchar,
         password -> Varchar,
-        bill -> Nullable<Numeric>,
+        bill -> Numeric,
     }
 }
 

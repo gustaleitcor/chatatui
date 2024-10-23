@@ -1,5 +1,4 @@
 -- Your SQL goes here
--- Your SQL goes here
 CREATE OR REPLACE VIEW view_users_by_chat AS
 SELECT
     p.chat_id,
