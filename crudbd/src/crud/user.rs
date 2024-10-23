@@ -43,10 +43,6 @@ pub fn get_user_by_username(conn: &mut PgConnection, user_username: &str) -> Que
     users.filter(username.ilike(user_username)).first(conn)
 }
 
-pub fn get_billing_by_user_id(conn: &mut PgConnection, user_id: i32) -> QueryResult<f32> {
-    users.select(bill).filter(id.eq(user_id)).first(conn)
-}
-
 pub fn user_authenticate(
     conn: &mut PgConnection,
     user_username: &str,

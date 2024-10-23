@@ -8,3 +8,4 @@ ratatui = "0.28.1"
 crud_bd = { path = "crudbd" }
 diesel = "2.2.3"
 chrono = "0.4.38"
+bigdecimal = "0.4.5"

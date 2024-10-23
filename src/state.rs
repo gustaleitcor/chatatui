@@ -39,6 +39,7 @@ impl State {
                 id: 0,
                 username: String::new(),
                 password: String::new(),
+                bill: 0.0,
             },
             current_event: Arc::new(Mutex::new(None)),
             current_screen: CurrentScreen::Login,
@@ -106,6 +107,7 @@ impl State {
             id: -1,
             username: String::new(),
             password: String::new(),
+            bill: 0.0,
         };
     }
 
